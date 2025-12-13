@@ -1,0 +1,7 @@
+email,username,password
+alice+tag@example.com,alice,correct"horse"battery
+bob.user@example.org,bob,hunt\2
+charlie@test.com,charlie,let's"in
+diana@company.io,diana,"password,with,commas"
+eve@domain.co.uk,eve,123456789
+frank@sub.example.com,frank,qwerty"uiop

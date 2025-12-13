@@ -1,0 +1,24 @@
+Source: dumptruck
+Section: utils
+Priority: optional
+Maintainer: Dumptruck Contributors <support@dumptruck.io>
+Homepage: <https://github.com/jeleniel/dumptruck>
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: dumptruck
+Architecture: any
+Depends: postgresql-client (>= 12), libssl3 (>= 3.0)
+Recommends: postgresql (>= 12), ollama
+Description: Bulk data analysis tool for Cyber Threat Identification
+ Dumptruck is a high-performance tool for analyzing large credential
+ leaks and other bulk data dumps. It provides:
+ .
+
+* Support for multiple data formats (CSV, JSON, YAML, XML, etc.)
+* Credential hash detection and analysis
+* Integration with Have I Been Pwned (HIBP)
+* Vector similarity search for duplicate detection
+* OAuth 2.0 and TLS 1.3+ security
+* CLI tool and HTTP/2 server modes
+* PostgreSQL with pgvector backend

@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+export RUSTFLAGS=-C target-cpu=generic
+
+%:
+	dh $@ --buildsystem=cargo
+
+override_dh_auto_build:
+	dh_auto_build -- --release
+
+override_dh_auto_test:
+	dh_auto_test -- --release
+
+override_dh_auto_install:
+	cargo install --locked --root debian/dumptruck/usr --path .
+
+override_dh_strip:
+	dh_strip --dbgsym-migration='dumptruck-dbgsym (<< 0.1.0-1~)'

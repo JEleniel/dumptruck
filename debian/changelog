@@ -1,0 +1,16 @@
+dumptruck (0.1.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Core credential analysis pipeline
+  * CLI tool with glob pattern and parallel processing support
+  * Server mode with HTTP/2 and TLS 1.3+
+  * OAuth 2.0 authentication
+  * PostgreSQL with pgvector backend
+  * HIBP integration for breach enrichment
+  * Ollama integration for embeddings
+  * Multiple input formats (CSV, JSON, YAML, XML, etc.)
+  * Hash detection for multiple algorithms
+  * Weak password detection
+  * 82 passing tests
+
+ -- Dumptruck Contributors <support@dumptruck.io>  Sat, 13 Dec 2025 23:59:59 +0000

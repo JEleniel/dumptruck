@@ -1,0 +1,5 @@
+email,username,password,metadata
+alice@example.com,alice,correcthorsebatterystaple,breach_2020
+bob@example.org,bob,hunter2
+charlie@test.com,charlie,letmein,breach_2021
+diana@company.io,diana,password123,breach_2020,extra_field

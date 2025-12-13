@@ -1,0 +1,54 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Dumptruck Configuration Schema",
+	"description": "Configuration schema for Dumptruck bulk data analysis tool",
+	"type": "object",
+	"required": ["api_keys", "email_suffix_substitutions"],
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"title": "Schema Reference",
+			"description": "Reference to the JSON schema file"
+		},
+		"api_keys": {
+			"type": "object",
+			"title": "API Keys",
+			"description": "External API credentials for enrichment services",
+			"required": ["hibp"],
+			"properties": {
+				"hibp": {
+					"type": "string",
+					"title": "Have I Been Pwned API Key",
+					"description": "API key for HIBP v3 API (32-character hex string). Get from https://haveibeenpwned.com/API/v3/",
+					"pattern": "^[a-fA-F0-9]{32}$",
+					"minLength": 32,
+					"maxLength": 32
+				}
+			},
+			"additionalProperties": false
+		},
+		"email_suffix_substitutions": {
+			"type": "object",
+			"title": "Email Suffix Substitutions",
+			"description": "Map canonical email domains to their alternate forms for normalization and deduplication",
+			"additionalProperties": {
+				"type": "array",
+				"title": "Alternate domains",
+				"description": "Array of alternate domain names that should map to the canonical domain",
+				"items": {
+					"type": "string",
+					"pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+					"description": "Valid domain name"
+				},
+				"minItems": 0
+			},
+			"examples": [
+				{
+					"gmail.com": ["googlemail.com"],
+					"microsoft.com": ["outlook.com", "hotmail.com"]
+				}
+			]
+		}
+	},
+	"additionalProperties": false
+}
