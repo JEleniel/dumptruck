@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 - Improved error messages for malformed input files
 - Enhanced documentation with examples and architecture diagrams
+- **Relicensed from MIT/Apache 2.0 to GNU General Public License v3.0 or later (GPL-3.0-or-later)**
 
 ### Fixed
 
@@ -90,7 +91,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 ### Known Limitations
 
 - Single-node deployment only (no clustering/sharding)
-- WASM enrichment plugins not yet implemented
 - No built-in web UI (API-only)
 - Limited to 4GB+ RAM systems (Ollama embedding requirement)
 
@@ -112,4 +112,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 See [VERSIONING.md](docs/VERSIONING.md) for detailed release process.
 
 [Unreleased]: https://github.com/jeleniel/dumptruck/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/jeleniel/dumptruck/releases/tag/v0.1.0

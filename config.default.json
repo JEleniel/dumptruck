@@ -1,7 +1,12 @@
 {
 	"$schema": "./config.schema.json",
+	"oauth": {
+		"client_id": "YOUR_OAUTH_CLIENT_ID",
+		"client_secret": "YOUR_OAUTH_CLIENT_SECRET",
+		"discovery_url": "https://your-oauth-provider/.well-known/openid-configuration"
+	},
 	"api_keys": {
-		"hibp": "00000000000000000000000000000000"
+		"hibp": "YOUR_HIBP_API_KEY"
 	},
 	"email_suffix_substitutions": {
 		"bofa.com": ["bankofamerica.com", "ml.com"],

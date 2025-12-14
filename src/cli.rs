@@ -263,29 +263,33 @@ impl std::fmt::Display for OutputFormat {
 /// Server mode arguments for HTTP/2 API with TLS 1.3+ and OAuth 2.0
 #[derive(Debug, Clone, Parser)]
 pub struct ServerArgs {
-	/// Port to bind the server to (requires TLS certificate)
+	/// Port to bind the server to
 	#[arg(short, long, value_name = "PORT", default_value = "8443")]
 	pub port: u16,
 
-	/// Path to TLS certificate file (PEM format)
-	#[arg(long, value_name = "PATH")]
-	pub cert: String,
+	/// Path to configuration file (defaults to config.json)
+	#[arg(short, long, value_name = "PATH")]
+	pub config: Option<String>,
 
-	/// Path to TLS private key file (PEM format)
+	/// Path to TLS certificate file (PEM format) - overrides config
 	#[arg(long, value_name = "PATH")]
-	pub key: String,
+	pub cert: Option<String>,
 
-	/// OAuth 2.0 Client ID for credentials flow
+	/// Path to TLS private key file (PEM format) - overrides config
+	#[arg(long, value_name = "PATH")]
+	pub key: Option<String>,
+
+	/// OAuth 2.0 Client ID - overrides config
 	#[arg(long, value_name = "ID")]
-	pub oauth_client_id: String,
+	pub oauth_client_id: Option<String>,
 
-	/// OAuth 2.0 Client Secret for credentials flow
+	/// OAuth 2.0 Client Secret - overrides config
 	#[arg(long, value_name = "SECRET")]
-	pub oauth_client_secret: String,
+	pub oauth_client_secret: Option<String>,
 
-	/// OAuth 2.0 Token Endpoint URL
+	/// OAuth 2.0 Token Endpoint URL - overrides config
 	#[arg(long, value_name = "URL")]
-	pub oauth_token_endpoint: String,
+	pub oauth_token_endpoint: Option<String>,
 
 	/// OAuth 2.0 scopes (space-separated)
 	#[arg(long, value_name = "SCOPES", default_value = "read:dumps write:dumps")]

@@ -39,6 +39,29 @@ pub struct ApiKeys {
 	pub hibp: String,
 }
 
+/// OAuth 2.0/OIDC configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuth {
+	#[serde(default)]
+	pub client_id: String,
+
+	#[serde(default)]
+	pub client_secret: String,
+
+	#[serde(default)]
+	pub discovery_url: String,
+}
+
+impl Default for OAuth {
+	fn default() -> Self {
+		Self {
+			client_id: String::new(),
+			client_secret: String::new(),
+			discovery_url: String::new(),
+		}
+	}
+}
+
 /// Email suffix substitution rules.
 /// The key is the canonical suffix, and the value is a list of alternate suffixes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,14 +70,37 @@ pub struct EmailSuffixSubstitutions {
 	pub rules: HashMap<String, Vec<String>>,
 }
 
+/// Custom password configuration.
+/// Allows adding plaintext passwords that will be hashed and used for detection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomPasswords {
+	/// List of plaintext passwords to check
+	#[serde(default)]
+	pub passwords: Vec<String>,
+}
+
+impl Default for CustomPasswords {
+	fn default() -> Self {
+		Self {
+			passwords: Vec::new(),
+		}
+	}
+}
+
 /// Main configuration structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+	#[serde(default)]
+	pub oauth: OAuth,
+
 	#[serde(default)]
 	pub api_keys: ApiKeys,
 
 	#[serde(default)]
 	pub email_suffix_substitutions: EmailSuffixSubstitutions,
+
+	#[serde(default)]
+	pub custom_passwords: CustomPasswords,
 }
 
 impl Default for ApiKeys {
@@ -76,8 +122,10 @@ impl Default for EmailSuffixSubstitutions {
 impl Default for Config {
 	fn default() -> Self {
 		Self {
+			oauth: OAuth::default(),
 			api_keys: ApiKeys::default(),
 			email_suffix_substitutions: EmailSuffixSubstitutions::default(),
+			custom_passwords: CustomPasswords::default(),
 		}
 	}
 }
@@ -149,6 +197,31 @@ impl Config {
 		&self.email_suffix_substitutions.rules
 	}
 
+	/// Get hashed versions of custom passwords.
+	///
+	/// Returns a HashMap mapping plaintext passwords to their MD5, SHA1, and SHA256 hashes.
+	/// Used for weak password detection.
+	///
+	/// # Returns
+	/// HashMap where key is plaintext password and value is tuple of (md5, sha1, sha256)
+	pub fn get_custom_password_hashes(&self) -> HashMap<String, (String, String, String)> {
+		use crate::hash_utils;
+		use sha1::{Digest as Sha1Digest, Sha1};
+
+		self.custom_passwords
+			.passwords
+			.iter()
+			.map(|pwd| {
+				let md5 = hash_utils::md5_hex_bytes(pwd.as_bytes());
+				let mut hasher = Sha1::new();
+				hasher.update(pwd.as_bytes());
+				let sha1 = hex::encode(hasher.finalize());
+				let sha256 = hash_utils::sha256_hex(pwd);
+				(pwd.clone(), (md5, sha1, sha256))
+			})
+			.collect()
+	}
+
 	/// Register a new suffix substitution rule.
 	///
 	/// # Arguments
@@ -158,6 +231,14 @@ impl Config {
 		self.email_suffix_substitutions
 			.rules
 			.insert(canonical_suffix, alternates);
+	}
+
+	/// Add a custom password to check.
+	///
+	/// # Arguments
+	/// * `password` - The plaintext password to add
+	pub fn add_custom_password(&mut self, password: String) {
+		self.custom_passwords.passwords.push(password);
 	}
 
 	/// Validate configuration against schema constraints.

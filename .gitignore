@@ -75,6 +75,8 @@
 # Configuration Files
 .env*
 !.env.example
+config.json
+!config.default.json
 
 # Linux Files
 *~

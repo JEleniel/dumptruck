@@ -1,5 +1,4 @@
-version: '3.9'
-
+name: dumptruck-ollama
 services:
   ollama:
     image: ollama/ollama:latest
@@ -9,8 +8,27 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     environment:
-      # Set to GPU if available (nvidia-docker); CPU-only otherwise
       OLLAMA_HOST: '0.0.0.0:11434'
+      OLLAMA_CONTEXT_LENGTH: '8192'
+    # GPU Support: Uncomment deploy section for NVidia GPU access
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    # For AMD GPU (ROCm), uncomment and change image:
+    # image: ollama/ollama:rocm
+    # devices:
+    #   - /dev/kfd:/dev/kfd
+    #   - /dev/dri:/dev/dri
+    # For Vulkan, uncomment devices and add environment:
+    # devices:
+    #   - /dev/kfd:/dev/kfd
+    #   - /dev/dri:/dev/dri
+    # environment:
+    #   OLLAMA_VULKAN: '1'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:11434/api/tags']
       interval: 10s

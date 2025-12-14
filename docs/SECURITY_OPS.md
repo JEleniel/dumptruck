@@ -118,6 +118,15 @@ fi
 
 ## Key Rotation and Management
 
+### Automated Key Rotation and Backup
+
+Dumptruck provides automated scripts for key rotation and backup operations. These scripts implement industry-standard key management practices with grace periods, secure encryption, and comprehensive logging.
+
+**Available Scripts:**
+
+- [rotate-keys.sh](../examples/scripts/rotate-keys.sh) - Automated HMAC and API key rotation
+- [backup-keys.sh](../examples/scripts/backup-keys.sh) - Secure key backup and recovery
+
 ### HMAC Key Rotation
 
 Dumptruck uses HMAC-SHA256 for certain internal operations.
@@ -133,7 +142,35 @@ chmod 600 /etc/dumptruck/hmac.key
 chown dumptruck:dumptruck /etc/dumptruck/hmac.key
 ```
 
-**Key Rotation Procedure:**
+**Automated Key Rotation Procedure:**
+
+Use the provided rotation script for automated key rotation:
+
+```bash
+# Make script executable
+chmod +x /path/to/examples/scripts/rotate-keys.sh
+
+# Rotate HMAC key
+./examples/scripts/rotate-keys.sh hmac
+
+# Rotate API keys
+./examples/scripts/rotate-keys.sh api
+
+# Rotate both
+./examples/scripts/rotate-keys.sh both
+```
+
+The script automates:
+
+1. New key generation
+2. Backup of old keys
+3. Grace period implementation (24 hours default, configurable)
+4. Both old and new keys accepted during transition
+5. Automatic key invalidation after grace period
+6. Comprehensive logging to `/var/log/dumptruck/key-rotation.log`
+7. Post-rotation validation and service checks
+
+**Manual Key Rotation Procedure** (if not using automated script):
 
 1. Generate new key: `openssl rand -base64 32 > /etc/dumptruck/hmac.key.new`
 2. Update configuration to use new key
@@ -150,20 +187,75 @@ chown dumptruck:dumptruck /etc/dumptruck/hmac.key
 - Never commit keys to version control (use `.gitignore`)
 - Use secrets management solution (e.g., HashiCorp Vault) in production
 
+### Key Backup and Recovery
+
+**Automated Backup Procedure:**
+
+Use the provided backup script for automated key backup and recovery:
+
+```bash
+# Make script executable
+chmod +x /path/to/examples/scripts/backup-keys.sh
+
+# Create encrypted backup
+./examples/scripts/backup-keys.sh backup
+
+# Verify key integrity and permissions
+./examples/scripts/backup-keys.sh verify
+
+# Show current key status
+./examples/scripts/backup-keys.sh status
+```
+
+**Backup Features:**
+
+- Automated tarball creation with all keys and metadata
+- Optional GPG encryption (configure with `BACKUP_ENCRYPTION_KEY` environment variable)
+- SHA256 checksum for integrity verification
+- Metadata file with backup information and restore instructions
+- Automatic backup rotation (keep recent backups)
+- Comprehensive logging to `/var/log/dumptruck/key-backup.log`
+
+**Restore Procedure:**
+
+```bash
+# Extract backup
+cd /tmp
+tar xzf /var/backups/dumptruck/dumptruck_keys_YYYYMMDD_HHMMSS.tar.gz
+
+# Review metadata
+cat backup.metadata
+
+# Restore keys (manual copy to preserve permissions)
+sudo cp hmac.key /etc/dumptruck/hmac.key
+sudo cp hibp.key /etc/dumptruck/hibp.key
+sudo chown dumptruck:dumptruck /etc/dumptruck/*.key
+sudo chmod 600 /etc/dumptruck/*.key
+
+# Verify restoration
+./backup-keys.sh verify
+```
+
+**Backup Storage Best Practices:**
+
+- Store backups on separate encrypted systems
+- Rotate backup media regularly
+- Test restore procedures quarterly
+- Keep off-site copies for disaster recovery
+- Implement automated backup schedules
+- Monitor backup completion and integrity
+- Use immutable backup storage when possible
+
 ### API Key Management
 
 **HIBP API Key:**
 
-```bash
-# Store in environment variable (prefer secrets manager)
-export HIBP_API_KEY="your-api-key"
-
-# Or in config:
-# {
-#   "hibp": {
-#     "api_key_env": "HIBP_API_KEY"
-#   }
-# }
+```json
+{
+  "hibp": {
+    "api_key_env": "HIBP_API_KEY"
+  }
+}
 ```
 
 **API Key Rotation:**
@@ -181,7 +273,7 @@ export HIBP_API_KEY="your-api-key"
 
 Dumptruck logs all ingest requests:
 
-```
+```log
 2025-12-13T10:23:45Z INFO dumptruck: POST /ingest client=10.0.0.5 bytes=2048 status=200 duration=125ms
 2025-12-13T10:23:46Z INFO dumptruck: POST /ingest client=10.0.0.6 bytes=1024 status=400 error="invalid_format" duration=45ms
 ```

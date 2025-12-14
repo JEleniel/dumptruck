@@ -10,6 +10,31 @@
 			"title": "Schema Reference",
 			"description": "Reference to the JSON schema file"
 		},
+		"oauth": {
+			"type": "object",
+			"title": "OAuth 2.0 Configuration",
+			"description": "OAuth 2.0/OIDC authentication settings for API endpoint protection",
+			"properties": {
+				"client_id": {
+					"type": "string",
+					"title": "OAuth Client ID",
+					"description": "Client identifier registered with the OAuth provider"
+				},
+				"client_secret": {
+					"type": "string",
+					"title": "OAuth Client Secret",
+					"description": "Client secret for the OAuth provider (keep secure)"
+				},
+				"discovery_url": {
+					"type": "string",
+					"title": "OIDC Discovery URL",
+					"description": "URL to the OAuth provider's .well-known/openid-configuration endpoint",
+					"format": "uri"
+				}
+			},
+			"required": ["client_id", "client_secret", "discovery_url"],
+			"additionalProperties": false
+		},
 		"api_keys": {
 			"type": "object",
 			"title": "API Keys",
@@ -20,9 +45,7 @@
 					"type": "string",
 					"title": "Have I Been Pwned API Key",
 					"description": "API key for HIBP v3 API (32-character hex string). Get from https://haveibeenpwned.com/API/v3/",
-					"pattern": "^[a-fA-F0-9]{32}$",
-					"minLength": 32,
-					"maxLength": 32
+					"minLength": 1
 				}
 			},
 			"additionalProperties": false

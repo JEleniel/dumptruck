@@ -5,7 +5,6 @@ use crate::cli::{IngestArgs, OutputFormat, StatusArgs, ServerArgs};
 use crate::output::{CsvFormatter, IngestResult, JsonFormatter, JsonlFormatter, OutputFormatter, TextFormatter, write_output};
 use std::path::Path;
 use std::sync::Arc;
-use std::error::Error;
 
 /// Handle the ingest command
 pub async fn ingest(args: IngestArgs) -> Result<(), String> {
@@ -291,11 +290,20 @@ async fn process_jobs(
 	worker_id: usize,
 	queue: Arc<crate::job_queue::JobQueue>,
 	verbose: u32,
+	shutdown_rx: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
 	use crate::job_queue::JobStatus;
 	use std::time::Duration;
 
 	loop {
+		// Check for shutdown signal
+		if shutdown_rx.try_recv().is_ok() {
+			if verbose >= 2 {
+				eprintln!("[DEBUG] Worker {} received shutdown signal", worker_id);
+			}
+			return;
+		}
+
 		// Check for jobs in the queue
 		let (jobs, _total) = queue.list_jobs(0, 100).await;
 
@@ -391,37 +399,92 @@ async fn process_single_job(
 	}
 }
 
+/// Set up signal handlers for graceful shutdown (SIGTERM, SIGINT)
+fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<()>, String> {
+	let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
+	let tx = shutdown_tx.clone();
+
+	tokio::spawn(async move {
+		let mut sigterm = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+			Ok(sig) => sig,
+			Err(e) => {
+				if verbose >= 1 {
+					eprintln!("[WARN] Failed to setup SIGTERM handler: {}", e);
+				}
+				return;
+			}
+		};
+
+		let mut sigint = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+			Ok(sig) => sig,
+			Err(e) => {
+				if verbose >= 1 {
+					eprintln!("[WARN] Failed to setup SIGINT handler: {}", e);
+				}
+				return;
+			}
+		};
+
+		tokio::select! {
+			_ = sigterm.recv() => {
+				if verbose >= 1 {
+					eprintln!("[INFO] SIGTERM received");
+				}
+				let _ = tx.send(());
+			}
+			_ = sigint.recv() => {
+				if verbose >= 1 {
+					eprintln!("[INFO] SIGINT received");
+				}
+				let _ = tx.send(());
+			}
+		}
+	});
+
+	Ok(shutdown_tx)
+}
+
 /// Handle the server command
 pub async fn server(args: ServerArgs) -> Result<(), String> {
 	use crate::oauth::OAuthProvider;
 	use crate::job_queue::JobQueue;
-	use crate::tls::{create_tls_server_config, init_crypto_provider};
 	use crate::server::{create_app, AppState};
+	use crate::deploy_manager::ServiceManager;
 	use std::sync::Arc;
-	use tokio_rustls::TlsAcceptor;
-	use hyper_util::rt::TokioIo;
 
-	// Initialize rustls crypto provider (must be done before creating TLS config)
-	init_crypto_provider();
+	// Install default crypto provider for rustls
+	let _ = rustls::crypto::ring::default_provider().install_default();
 
 	if args.verbose >= 1 {
 		eprintln!("[INFO] Starting HTTPS server on port {}", args.port);
 	}
 
-	// Load TLS configuration (TLS 1.3+ enforced)
-	let tls_config = create_tls_server_config(&args.cert, &args.key).map_err(|e| {
-		format!("Failed to load TLS configuration: {}", e)
-	})?;
+	// Load configuration file
+	let config_path = args.config.clone().unwrap_or_else(|| "config.json".to_string());
+	let config = crate::config::Config::from_file(&config_path)
+		.map_err(|e| format!("Failed to load config from {}: {}", config_path, e))?;
 
 	if args.verbose >= 2 {
-		eprintln!("[DEBUG] TLS 1.3+ configuration loaded successfully");
+		eprintln!("[DEBUG] Configuration loaded from: {}", config_path);
+	}
+
+	// Get OAuth settings - CLI args override config file
+	let oauth_client_id = args.oauth_client_id
+		.unwrap_or_else(|| config.oauth.client_id.clone());
+	let oauth_client_secret = args.oauth_client_secret
+		.unwrap_or_else(|| config.oauth.client_secret.clone());
+	let oauth_token_endpoint = args.oauth_token_endpoint
+		.unwrap_or_else(|| config.oauth.discovery_url.clone());
+
+	if oauth_client_id.is_empty() || oauth_client_secret.is_empty() || oauth_token_endpoint.is_empty() {
+		return Err("Missing OAuth configuration. Provide via config.json or command-line arguments.".to_string());
 	}
 
 	// Initialize OAuth provider
 	let oauth = OAuthProvider::new(
-		args.oauth_client_id,
-		args.oauth_client_secret,
-		args.oauth_token_endpoint,
+		oauth_client_id,
+		oauth_client_secret,
+		oauth_token_endpoint,
 		args.oauth_scope,
 	);
 
@@ -439,6 +502,9 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	// Create router with all endpoints
 	let app = create_app(state.clone());
 
+	// Create shutdown signal for worker tasks
+	let (shutdown_workers_tx, _) = tokio::sync::broadcast::channel::<()>(1);
+
 	// Spawn background job processor workers (parallel processing)
 	let worker_count = std::thread::available_parallelism()
 		.map(|n| n.get())
@@ -450,104 +516,82 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	for worker_id in 0..worker_count {
 		let queue = job_queue.clone();
 		let verbose = args.verbose as u32;
+		let mut shutdown_rx = shutdown_workers_tx.subscribe();
 
 		tokio::spawn(async move {
-			process_jobs(worker_id, queue, verbose).await;
+			process_jobs(worker_id, queue, verbose, &mut shutdown_rx).await;
 		});
 	}
 
 	// Create socket address
 	let addr = std::net::SocketAddr::from(([127, 0, 0, 1], args.port));
 	if args.verbose >= 1 {
-		eprintln!("[INFO] Listening on {} with TLS 1.3+", addr);
+		eprintln!("[INFO] Listening on {}", addr);
 	}
 
-	// Create TCP listener
-	let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| {
-		format!("Failed to bind to {}: {}", addr, e)
-	})?;
+	// Load TLS certificates
+	let cert_path = args.cert.unwrap_or_else(|| "/etc/tls/tls.crt".to_string());
+	let key_path = args.key.unwrap_or_else(|| "/etc/tls/tls.key".to_string());
 
-	// Create TLS acceptor
-	let tls_acceptor = TlsAcceptor::from(Arc::new(tls_config));
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Loading TLS certificates from {}", cert_path);
+		eprintln!("[DEBUG] Loading TLS key from {}", key_path);
+	}
+
+	// Create TLS config using axum-server
+	let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(&cert_path, &key_path)
+		.await
+		.map_err(|e| format!("Failed to load TLS config: {}", e))?;
+
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] TLS configuration loaded successfully");
+	}
 
 	if args.verbose >= 1 {
 		eprintln!("[INFO] Server started successfully, waiting for connections...");
+		eprintln!("[INFO] Press Ctrl+C to shutdown gracefully");
 	}
 
-	loop {
-		let (socket, _peer_addr) = listener.accept().await.map_err(|e| {
-			format!("Failed to accept connection: {}", e)
-		})?;
+	// Set up signal handlers for graceful shutdown
+	let shutdown_tx = setup_signal_handler(args.verbose as u32)?;
+	let mut shutdown_rx = shutdown_tx.subscribe();
 
-		if args.verbose >= 3 {
-			eprintln!("[DEBUG] Accepted connection from {}", _peer_addr);
+	// Start server with TLS using axum-server
+	let server = axum_server::bind_rustls(addr, tls_config)
+		.serve(app.into_make_service());
+
+	// Race between server and shutdown signal
+	tokio::select! {
+		result = server => {
+			// Server ended (unexpected)
+			result.map_err(|e| format!("Server error: {}", e))?;
 		}
-
-		let tls_acceptor = tls_acceptor.clone();
-		let app = app.clone();
-		let verbose = args.verbose;
-
-		tokio::spawn(async move {
-			// Perform TLS handshake
-			match tls_acceptor.accept(socket).await {
-				Ok(tls_stream) => {
-					// Wrap socket for hyper
-					let io = TokioIo::new(tls_stream);
-					
-					// Use HTTP/1.1 - axum Router works directly with hyper's http1 builder
-					// via tower's Service trait
-					use hyper::service::service_fn;
-					
-					let svc = service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
-						let app = app.clone();
-						async move {
-							// Collect the body
-							let (parts, incoming) = req.into_parts();
-							let bytes = match http_body_util::BodyExt::collect(incoming).await {
-								Ok(c) => c.to_bytes(),
-								Err(_) => axum::body::Bytes::new(),
-							};
-							
-							// Build axum request
-							let axum_req = axum::extract::Request::from_parts(
-								parts,
-								axum::body::Body::from(bytes),
-							);
-							
-							// Call router
-							use tower::ServiceExt;
-							match app.oneshot(axum_req).await {
-								Ok(res) => Ok::<_, std::convert::Infallible>(res),
-								Err(_) => {
-									Ok(hyper::Response::builder()
-										.status(404)
-										.body(axum::body::Body::from("Not Found"))
-										.unwrap())
-								}
-							}
-						}
-					});
-					
-					if let Err(err) = hyper::server::conn::http1::Builder::new()
-						.serve_connection(io, svc)
-						.await
-					{
-						if verbose >= 2 {
-							let err_msg = format!("{:?}", err);
-							if !err_msg.contains("reset") && !err_msg.contains("broken pipe") {
-								eprintln!("HTTP connection error: {}", err_msg);
-							}
-						}
-					}
-				}
-				Err(e) => {
-					if verbose >= 2 {
-						eprintln!("TLS handshake failed: {}", e);
-					}
-				}
+		_ = shutdown_rx.recv() => {
+			// Graceful shutdown triggered
+			if args.verbose >= 1 {
+				eprintln!("[INFO] Shutdown signal received, stopping gracefully...");
 			}
-		});
+
+			// Signal all worker tasks to shut down
+			let _ = shutdown_workers_tx.send(());
+			if args.verbose >= 2 {
+				eprintln!("[DEBUG] Signaled {} workers to shut down", worker_count);
+			}
+
+			// Give workers a moment to exit cleanly
+			tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+			// Stop docker containers (both tracked and any that may be running)
+			let service_manager = ServiceManager::new();
+			let _ = service_manager.stop_all_services(args.verbose as u32).await;
+
+			if args.verbose >= 1 {
+				eprintln!("[INFO] Server shutdown complete");
+			}
+		}
 	}
+
+	Ok(())
 }
 
 #[cfg(test)]
