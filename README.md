@@ -27,28 +27,40 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - **Memory-Efficient Streaming**: Process GB/TB-scale files with constant memory usage via line-by-line streaming
 - **Parallel Processing**: Batch ingest with glob patterns and configurable worker threads
 - **Safe Ingestion**: Binary detection, UTF-8 validation with lossy fallback, 100MB file size limits, zero-crash guarantee
+- **Evidence Preservation**: Unique file IDs with dual hash signatures (SHA-256 + BLAKE3) and alternate name tracking
+- **Compression Detection**: Automatic ZIP/gzip detection with safe nested level limits (max 3 levels)
 
 ### Normalization & Deduplication
 
 - **Unicode Canonicalization**: NFKC normalization + ICU4X case-folding + punctuation rules for consistent comparisons
 - **Smart Email Handling**: Automatic domain alias substitution (e.g., `googlemail.com` → `gmail.com`)
-- **Hash-Based Deduplication**: Exact matching with SHA-256 hashing for O(1) lookups
+- **Alias Resolution**: Links between entries identified across email, user IDs, and phone numbers
+- **Hash-Based Deduplication**: Exact matching with SHA-256 + dual field hashing for O(1) lookups and minor-variation detection
 - **Vector Similarity Search**: Ollama embeddings (768-dim Nomic vectors) with pgvector IVFFlat indexing for near-duplicate detection
 - **Bloom Filter Sync**: Distributed deduplication via peer discovery and bandwidth-efficient delta sync
 
 ### Intelligence & Enrichment
 
+- **Field Identification & Documentation**: Automatically tags ID, password, PII, and NPI fields with clear reporting
+- **Anomaly & Novelty Detection**: Entropy outliers, unseen field combinations, rare domain/user detection, unexpected credential formats, statistical deviation from breach baselines
 - **PII/NPI Detection**: Identifies phone numbers (15+ countries), SSNs, credit cards, crypto addresses (Bitcoin, Ethereum, XRP), IBAN/SWIFT codes, national IDs (15+ countries), IP addresses, and digital wallets
 - **Weak Password Detection**: Rainbow table with 40+ common passwords and 3-5 character keyboard patterns; pre-hashed credential detection (bcrypt, scrypt, argon2, MD5, SHA1, SHA256)
-- **Breach Enrichment**: Have I Been Pwned (HIBP) API integration for real-time breach data lookup and tracking
+- **Risk Scoring**: Assigns 0-100 risk score based on weak password count, credential compromise potential, breach history, and anomaly contributions
+- **Breach Enrichment**: Have I Been Pwned (HIBP) API integration for real-time breach data lookup; background thread continuously enriches corpus in server mode
 - **Co-occurrence Analysis**: Graph-based tracking of address relationships and credential associations
+
+### Chain of Custody & Security
+
+- **Chain of Custody**: Cryptographically signed entry for each file processed (ED25519) with operator, timestamp, and audit trail for compliance
+- **Secure Deletion**: Temporary files shredded (3-pass NIST SP 800-88 overwrite) to prevent data ghosting via forensic recovery
+- **Privacy-First**: Historical data stored only as non-reversible hashes; zero exposure even if database is compromised
 
 ### Deployment & Operations
 
 - **CLI & Server Modes**: Standalone tool or HTTP/2 REST API with TLS 1.3+ and OAuth 2.0
-- **Flexible Output**: JSON, CSV, JSONL, or human-readable text formats
+- **Flexible Output**: JSON, CSV, JSONL, or human-readable text formats with field classification documentation
 - **Peer Discovery**: Automatic subnet peer detection via UDP broadcast for distributed deployments
-- **Comprehensive Audit Logging**: Structured JSON logging with metadata events for forensics and compliance
+- **Comprehensive Audit Logging**: Structured JSON logging with metadata events, Chain of Custody records, and forensic details
 - **High Performance**: >800 requests/second on Raspberry Pi 5 with concurrent TLS connections
 
 ---
@@ -161,16 +173,16 @@ Raw Data → Safe Ingest → Normalization → Deduplication → Enrichment → 
 
 ## Documentation
 
-| Guide | Purpose |
-|-------|---------|
-| **[Architecture Overview](docs/architecture/ARCHITECTURE.md)** | System design, components, data flow |
-| **[CLI Usage](docs/CLI_USAGE.md)** | Command-line interface and examples |
-| **[Configuration](docs/CONFIGURATION.md)** | API keys and settings reference |
-| **[Deduplication Pipeline](docs/DEDUP_ARCHITECTURE.md)** | Address canonicalization and matching strategy |
-| **[Enrichment Pipeline](docs/ENRICHMENT.md)** | HIBP and Ollama integration details |
-| **[Security Operations](docs/SECURITY_OPS.md)** | TLS, OAuth, key rotation, incident response |
-| **[Deployment Guide](docs/architecture/DEPLOYMENT.md)** | Production deployment patterns |
-| **[Contributing](CONTRIBUTING.md)** | Development guidelines and code standards |
+| Guide                                                          | Purpose                                        |
+| -------------------------------------------------------------- | ---------------------------------------------- |
+| **[Architecture Overview](docs/architecture/ARCHITECTURE.md)** | System design, components, data flow           |
+| **[CLI Usage](docs/CLI_USAGE.md)**                             | Command-line interface and examples            |
+| **[Configuration](docs/CONFIGURATION.md)**                     | API keys and settings reference                |
+| **[Deduplication Pipeline](docs/DEDUP_ARCHITECTURE.md)**       | Address canonicalization and matching strategy |
+| **[Enrichment Pipeline](docs/ENRICHMENT.md)**                  | HIBP and Ollama integration details            |
+| **[Security Operations](docs/SECURITY_OPS.md)**                | TLS, OAuth, key rotation, incident response    |
+| **[Deployment Guide](docs/architecture/DEPLOYMENT.md)**        | Production deployment patterns                 |
+| **[Contributing](CONTRIBUTING.md)**                            | Development guidelines and code standards      |
 
 ---
 

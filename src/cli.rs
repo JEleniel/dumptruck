@@ -22,6 +22,8 @@ pub enum Commands {
 	Status(StatusArgs),
 	/// Start HTTP/2 server with TLS 1.3+ and OAuth authentication
 	Server(ServerArgs),
+	/// Generate rainbow table entries with SHA512 and NTLM hashes for weak passwords
+	GenerateTables(GenerateTablesArgs),
 }
 
 /// Arguments for the ingest command
@@ -87,6 +89,16 @@ pub struct IngestArgs {
 	/// Number of parallel workers for processing multiple files (default: number of CPU cores)
 	#[arg(long)]
 	pub workers: Option<usize>,
+
+	/// Working directory for isolated file processing (default: /tmp/dumptruck/)
+	/// All work happens in isolated copies here; original files are never modified
+	#[arg(long, value_name = "PATH")]
+	pub working_dir: Option<PathBuf>,
+
+	/// Verify working directory is mounted with noexec flag (default: false)
+	/// Set to true to enforce strict security checking (may fail if /tmp doesn't have noexec)
+	#[arg(long, default_value = "false")]
+	pub verify_noexec: bool,
 }
 
 impl IngestArgs {
@@ -111,9 +123,8 @@ impl IngestArgs {
 		}
 
 		// Try to glob the pattern
-		let glob_results = glob(pattern).map_err(|e| {
-			format!("Invalid glob pattern '{}': {}", pattern, e)
-		})?;
+		let glob_results =
+			glob(pattern).map_err(|e| format!("Invalid glob pattern '{}': {}", pattern, e))?;
 
 		let mut files = Vec::new();
 		for entry in glob_results {
@@ -200,6 +211,22 @@ pub struct StatusArgs {
 	/// Verbosity level
 	#[arg(short, action = clap::ArgAction::Count)]
 	pub verbose: u8,
+}
+
+/// Arguments for the generate-tables command
+#[derive(Debug, Clone, Parser)]
+pub struct GenerateTablesArgs {
+	/// Output file for generated Rust code (default: stdout)
+	#[arg(short, long, value_name = "FILE")]
+	pub output: Option<PathBuf>,
+
+	/// Include NTLM hashes (requires proper MD4 support)
+	#[arg(long, default_value = "true")]
+	pub include_ntlm: bool,
+
+	/// Include SHA512 hashes
+	#[arg(long, default_value = "true")]
+	pub include_sha512: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -408,11 +435,17 @@ mod tests {
 			output_format: OutputFormat::Json,
 			config: None,
 			workers: None,
+			working_dir: None,
+			verify_noexec: false,
 		};
 
 		let files = ingest.resolve_input_files().expect("failed to resolve");
 		assert_eq!(files.len(), 1);
-		assert!(files[0].to_string_lossy().contains("well_formed_credentials.csv"));
+		assert!(
+			files[0]
+				.to_string_lossy()
+				.contains("well_formed_credentials.csv")
+		);
 	}
 
 	#[test]
@@ -433,10 +466,16 @@ mod tests {
 			output_format: OutputFormat::Json,
 			config: None,
 			workers: None,
+			working_dir: None,
+			verify_noexec: false,
 		};
 
 		let files = ingest.resolve_input_files().expect("failed to resolve");
 		assert!(!files.is_empty());
-		assert!(files.iter().any(|f| f.to_string_lossy().contains("well_formed")));
+		assert!(
+			files
+				.iter()
+				.any(|f| f.to_string_lossy().contains("well_formed"))
+		);
 	}
 }

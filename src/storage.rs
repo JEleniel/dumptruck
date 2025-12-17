@@ -184,6 +184,95 @@ pub trait StorageAdapter {
 		let _ = canonical_hash;
 		Ok(0)
 	}
+
+	// ========== Stage 13: Storage Enhancement Methods ==========
+
+	/// Insert file metadata (Stage 1: Evidence Preservation)
+	/// Tracks file ID, hashes, size, and processing status
+	fn insert_file_metadata(
+		&mut self,
+		file_id: &str,
+		original_filename: &str,
+		sha256_hash: &str,
+		file_size: i64,
+	) -> std::io::Result<bool> {
+		let _ = (file_id, original_filename, sha256_hash, file_size);
+		Ok(false)
+	}
+
+	/// Insert chain of custody record (Stage 4: Chain of Custody)
+	/// Stores cryptographically signed audit trail entry
+	fn insert_custody_record(
+		&mut self,
+		file_id: &str,
+		record_id: &str,
+		custody_action: &str,
+		operator: &str,
+		file_hash: &str,
+		signature: &[u8],
+		public_key: &[u8],
+	) -> std::io::Result<bool> {
+		let _ = (
+			file_id,
+			record_id,
+			custody_action,
+			operator,
+			file_hash,
+			signature,
+			public_key,
+		);
+		Ok(false)
+	}
+
+	/// Insert alias relationship (Stage 8: Alias Resolution)
+	/// Links related entries across multiple identity formats
+	fn insert_alias_relationship(
+		&mut self,
+		canonical_hash: &str,
+		variant_hash: &str,
+		alias_type: &str,
+		confidence: i32,
+	) -> std::io::Result<bool> {
+		let _ = (canonical_hash, variant_hash, alias_type, confidence);
+		Ok(false)
+	}
+
+	/// Get all alias relationships for a canonical hash
+	fn get_alias_relationships(
+		&mut self,
+		canonical_hash: &str,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		let _ = canonical_hash;
+		Ok(vec![])
+	}
+
+	/// Insert anomaly score (Stage 10: Anomaly Detection)
+	/// Records detected statistical anomalies and outliers
+	fn insert_anomaly_score(
+		&mut self,
+		file_id: &str,
+		subject_hash: &str,
+		anomaly_type: &str,
+		risk_score: i32,
+	) -> std::io::Result<bool> {
+		let _ = (file_id, subject_hash, anomaly_type, risk_score);
+		Ok(false)
+	}
+
+	/// Get anomaly scores for a file
+	fn get_anomalies_for_file(&mut self, file_id: &str) -> std::io::Result<Vec<(String, i32)>> {
+		let _ = file_id;
+		Ok(vec![])
+	}
+
+	/// Get high-risk anomalies (risk_score > threshold)
+	fn get_high_risk_anomalies(
+		&mut self,
+		threshold: i32,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		let _ = threshold;
+		Ok(vec![])
+	}
 }
 
 /// Filesystem-based storage that appends CSV lines to a file.
@@ -317,6 +406,76 @@ impl StorageAdapter for FsStorage {
 			}
 		}
 		Ok(false)
+	}
+
+	// ========== Stage 13: Storage Enhancement (FsStorage no-op implementations) ==========
+
+	fn insert_file_metadata(
+		&mut self,
+		_file_id: &str,
+		_original_filename: &str,
+		_sha256_hash: &str,
+		_file_size: i64,
+	) -> std::io::Result<bool> {
+		// Filesystem storage doesn't track metadata; return false (not inserted)
+		Ok(false)
+	}
+
+	fn insert_custody_record(
+		&mut self,
+		_file_id: &str,
+		_record_id: &str,
+		_custody_action: &str,
+		_operator: &str,
+		_file_hash: &str,
+		_signature: &[u8],
+		_public_key: &[u8],
+	) -> std::io::Result<bool> {
+		// Filesystem storage doesn't track custody; return false (not inserted)
+		Ok(false)
+	}
+
+	fn insert_alias_relationship(
+		&mut self,
+		_canonical_hash: &str,
+		_variant_hash: &str,
+		_alias_type: &str,
+		_confidence: i32,
+	) -> std::io::Result<bool> {
+		// Filesystem storage doesn't track aliases; return false (not inserted)
+		Ok(false)
+	}
+
+	fn get_alias_relationships(
+		&mut self,
+		_canonical_hash: &str,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		// Filesystem storage doesn't track aliases; return empty
+		Ok(vec![])
+	}
+
+	fn insert_anomaly_score(
+		&mut self,
+		_file_id: &str,
+		_subject_hash: &str,
+		_anomaly_type: &str,
+		_risk_score: i32,
+	) -> std::io::Result<bool> {
+		// Filesystem storage doesn't track anomalies; return false (not inserted)
+		Ok(false)
+	}
+
+	fn get_anomalies_for_file(&mut self, _file_id: &str) -> std::io::Result<Vec<(String, i32)>> {
+		// Filesystem storage doesn't track anomalies; return empty
+		Ok(vec![])
+	}
+
+	fn get_high_risk_anomalies(
+		&mut self,
+		_threshold: i32,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		// Filesystem storage doesn't track anomalies; return empty
+		Ok(vec![])
 	}
 }
 
@@ -855,6 +1014,197 @@ impl StorageAdapter for PostgresStorage {
 			.query_one(&stmt, &[&canonical_hash])
 			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 		Ok(row.get::<_, i64>(0) as i32)
+	}
+
+	// ========== Stage 13: Storage Enhancement Implementations ==========
+
+	fn insert_file_metadata(
+		&mut self,
+		file_id: &str,
+		original_filename: &str,
+		sha256_hash: &str,
+		file_size: i64,
+	) -> std::io::Result<bool> {
+		let stmt = self
+			.client
+			.prepare(
+				"INSERT INTO file_metadata (file_id, original_filename, sha256_hash, file_size) \
+				 VALUES ($1, $2, $3, $4) ON CONFLICT (file_id) DO NOTHING",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.execute(
+				&stmt,
+				&[&file_id, &original_filename, &sha256_hash, &file_size],
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows > 0)
+	}
+
+	fn insert_custody_record(
+		&mut self,
+		file_id: &str,
+		record_id: &str,
+		custody_action: &str,
+		operator: &str,
+		file_hash: &str,
+		signature: &[u8],
+		public_key: &[u8],
+	) -> std::io::Result<bool> {
+		let stmt = self
+			.client
+			.prepare(
+				"INSERT INTO chain_of_custody_records \
+				 (file_id, record_id, custody_action, operator, file_hash, signature, public_key) \
+				 VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (record_id) DO NOTHING",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.execute(
+				&stmt,
+				&[
+					&file_id,
+					&record_id,
+					&custody_action,
+					&operator,
+					&file_hash,
+					&signature,
+					&public_key,
+				],
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows > 0)
+	}
+
+	fn insert_alias_relationship(
+		&mut self,
+		canonical_hash: &str,
+		variant_hash: &str,
+		alias_type: &str,
+		confidence: i32,
+	) -> std::io::Result<bool> {
+		// For now, we'll use empty values for canonical/variant text (could be populated)
+		let stmt = self
+			.client
+			.prepare(
+				"INSERT INTO alias_relationships \
+				 (canonical_hash, variant_hash, alias_type, confidence, canonical_value, variant_value) \
+				 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (canonical_hash, variant_hash, alias_type) DO NOTHING",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.execute(
+				&stmt,
+				&[
+					&canonical_hash,
+					&variant_hash,
+					&alias_type,
+					&confidence,
+					&"", // canonical_value placeholder
+					&"", // variant_value placeholder
+				],
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows > 0)
+	}
+
+	fn get_alias_relationships(
+		&mut self,
+		canonical_hash: &str,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		let stmt = self
+			.client
+			.prepare(
+				"SELECT variant_hash, alias_type, confidence FROM alias_relationships \
+				 WHERE canonical_hash = $1 ORDER BY confidence DESC",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.query(&stmt, &[&canonical_hash])
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows
+			.iter()
+			.map(|row| {
+				(
+					row.get::<_, String>(0),
+					row.get::<_, String>(1),
+					row.get::<_, i32>(2),
+				)
+			})
+			.collect())
+	}
+
+	fn insert_anomaly_score(
+		&mut self,
+		file_id: &str,
+		subject_hash: &str,
+		anomaly_type: &str,
+		risk_score: i32,
+	) -> std::io::Result<bool> {
+		let stmt = self
+			.client
+			.prepare(
+				"INSERT INTO anomaly_scores (file_id, subject_hash, anomaly_type, risk_score) \
+				 VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.execute(
+				&stmt,
+				&[&file_id, &subject_hash, &anomaly_type, &risk_score],
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows > 0)
+	}
+
+	fn get_anomalies_for_file(&mut self, file_id: &str) -> std::io::Result<Vec<(String, i32)>> {
+		let stmt = self
+			.client
+			.prepare(
+				"SELECT anomaly_type, risk_score FROM anomaly_scores \
+				 WHERE file_id = $1 ORDER BY risk_score DESC",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.query(&stmt, &[&file_id])
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows
+			.iter()
+			.map(|row| (row.get::<_, String>(0), row.get::<_, i32>(1)))
+			.collect())
+	}
+
+	fn get_high_risk_anomalies(
+		&mut self,
+		threshold: i32,
+	) -> std::io::Result<Vec<(String, String, i32)>> {
+		let stmt = self
+			.client
+			.prepare(
+				"SELECT file_id, anomaly_type, risk_score FROM anomaly_scores \
+				 WHERE risk_score > $1 ORDER BY risk_score DESC",
+			)
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let rows = self
+			.client
+			.query(&stmt, &[&threshold])
+			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		Ok(rows
+			.iter()
+			.map(|row| {
+				(
+					row.get::<_, String>(0),
+					row.get::<_, String>(1),
+					row.get::<_, i32>(2),
+				)
+			})
+			.collect())
 	}
 }
 

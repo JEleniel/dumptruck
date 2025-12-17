@@ -87,6 +87,32 @@ impl Default for CustomPasswords {
 	}
 }
 
+/// Working directory configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkingDirectoryConfig {
+	/// Path to working directory for isolated file processing
+	/// Defaults to system temp directory if not specified
+	#[serde(default)]
+	pub path: Option<String>,
+
+	/// Whether to verify working directory is mounted with noexec
+	#[serde(default = "default_verify_noexec")]
+	pub verify_noexec: bool,
+}
+
+fn default_verify_noexec() -> bool {
+	true
+}
+
+impl Default for WorkingDirectoryConfig {
+	fn default() -> Self {
+		Self {
+			path: None,
+			verify_noexec: true,
+		}
+	}
+}
+
 /// Main configuration structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -101,6 +127,10 @@ pub struct Config {
 
 	#[serde(default)]
 	pub custom_passwords: CustomPasswords,
+
+	/// Working directory configuration
+	#[serde(default)]
+	pub working_directory: WorkingDirectoryConfig,
 }
 
 impl Default for ApiKeys {
@@ -126,6 +156,7 @@ impl Default for Config {
 			api_keys: ApiKeys::default(),
 			email_suffix_substitutions: EmailSuffixSubstitutions::default(),
 			custom_passwords: CustomPasswords::default(),
+			working_directory: WorkingDirectoryConfig::default(),
 		}
 	}
 }
@@ -199,25 +230,21 @@ impl Config {
 
 	/// Get hashed versions of custom passwords.
 	///
-	/// Returns a HashMap mapping plaintext passwords to their MD5, SHA1, and SHA256 hashes.
-	/// Used for weak password detection.
+	/// Returns a HashMap mapping plaintext passwords to their MD5 and SHA256 hashes.
+	/// SHA1 support removed - use MD5 or SHA256 instead.
 	///
 	/// # Returns
-	/// HashMap where key is plaintext password and value is tuple of (md5, sha1, sha256)
-	pub fn get_custom_password_hashes(&self) -> HashMap<String, (String, String, String)> {
+	/// HashMap where key is plaintext password and value is tuple of (md5, sha256)
+	pub fn get_custom_password_hashes(&self) -> HashMap<String, (String, String)> {
 		use crate::hash_utils;
-		use sha1::{Digest as Sha1Digest, Sha1};
 
 		self.custom_passwords
 			.passwords
 			.iter()
 			.map(|pwd| {
 				let md5 = hash_utils::md5_hex_bytes(pwd.as_bytes());
-				let mut hasher = Sha1::new();
-				hasher.update(pwd.as_bytes());
-				let sha1 = hex::encode(hasher.finalize());
 				let sha256 = hash_utils::sha256_hex(pwd);
-				(pwd.clone(), (md5, sha1, sha256))
+				(pwd.clone(), (md5, sha256))
 			})
 			.collect()
 	}

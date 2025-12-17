@@ -6,11 +6,11 @@
 use crate::job_queue::{Job, JobQueue, JobStatus};
 use crate::oauth::OAuthProvider;
 use axum::{
+	Json, Router,
 	extract::{Path, Query, State},
 	http::{HeaderMap, StatusCode},
 	response::{IntoResponse, Response},
 	routing::{get, post},
-	Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -148,11 +148,15 @@ async fn ingest_file(
 
 	// Validate request
 	if req.filename.is_empty() {
-		return Err(ServerError::BadRequest("filename cannot be empty".to_string()));
+		return Err(ServerError::BadRequest(
+			"filename cannot be empty".to_string(),
+		));
 	}
 
 	if req.file_size_bytes == 0 {
-		return Err(ServerError::BadRequest("file_size_bytes must be > 0".to_string()));
+		return Err(ServerError::BadRequest(
+			"file_size_bytes must be > 0".to_string(),
+		));
 	}
 
 	// Enqueue job
@@ -204,36 +208,30 @@ async fn ingest_file_upload(
 	// Get filename from query parameter
 	let filename = params
 		.get("filename")
-		.ok_or_else(|| ServerError::BadRequest(
-			"filename query parameter required".to_string()
-		))?
+		.ok_or_else(|| ServerError::BadRequest("filename query parameter required".to_string()))?
 		.trim()
 		.to_string();
 
 	if filename.is_empty() {
-		return Err(ServerError::BadRequest("filename cannot be empty".to_string()));
+		return Err(ServerError::BadRequest(
+			"filename cannot be empty".to_string(),
+		));
 	}
 
-	// Create temporary file path for streaming
-	let temp_filename = format!(
-		"/tmp/dumptruck_{}_{}",
-		uuid::Uuid::new_v4(),
-		filename
-	);
+	// Create temporary file path for streaming (unused - streaming upload not implemented)
+	let _temp_filename = format!("/tmp/dumptruck_{}_{}", uuid::Uuid::new_v4(), filename);
 
 	// In axum 0.8, streaming bodies require using RawBody or similar approach
 	// For now, we enqueue the job metadata. The actual file transfer would be
 	// handled by the client uploading to a separate endpoint or using a different
 	// mechanism (e.g., S3 presigned URL)
-	
+
 	// Assume file size is provided via header for demo purposes
 	let file_size = headers
 		.get("x-file-size")
 		.and_then(|v| v.to_str().ok())
 		.and_then(|s| s.parse::<u64>().ok())
-		.ok_or_else(|| ServerError::BadRequest(
-			"x-file-size header required".to_string()
-		))?;
+		.ok_or_else(|| ServerError::BadRequest("x-file-size header required".to_string()))?;
 
 	if file_size == 0 {
 		return Err(ServerError::BadRequest("File size must be > 0".to_string()));

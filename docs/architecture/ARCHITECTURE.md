@@ -27,15 +27,23 @@ This document covers high-level structure, major components, and interactions. D
 
 ![Pipeline](diagrams/pipeline.md)
 
-The primary data pipeline moves input files through the following stages:
+The primary data pipeline moves input files through 15 comprehensive stages:
 
-1. **Ingest**: Format detection and streaming read
-2. **Safe Ingest**: Binary detection, UTF-8 validation, size limits
-3. **Normalization**: Unicode canonicalization with NFKC + case-folding
-4. **Deduplication**: Hash-based exact match + vector similarity detection
-5. **Enrichment**: Ollama embeddings + Have I Been Pwned breach data
-6. **Analysis**: PII/NPI detection (phones, SSNs, credit cards, crypto, etc.)
-7. **Storage**: PostgreSQL with deduplication graph and breach metadata
+1. **Evidence Preservation**: Generate unique file ID + dual hashes (SHA-256 + BLAKE3), capture alternate names
+2. **Compression Detection**: ZIP/gzip/bzip2/7-zip detection, nested extraction (max 3 levels)
+3. **Ingest**: Format detection and streaming read
+4. **Chain of Custody**: ED25519 cryptographic signing with operator/timestamp/action/hash tracking
+5. **Safe Ingest**: Binary detection, UTF-8 validation with lossy recovery, size limits
+6. **Normalization**: Unicode canonicalization with NFKC + case-folding + punctuation normalization
+7. **Field Identification**: Classify fields as ID/password/PII/NPI, generate documentation
+8. **Alias Resolution**: Link aliases across email, user IDs, phone numbers, national IDs
+9. **Deduplication**: Hash-based exact match + field hashing for variants + vector similarity detection
+10. **Anomaly Detection**: Entropy analysis, unseen field combinations, rare domain/user detection, format anomalies, baseline deviation
+11. **Enrichment**: Ollama embeddings (768-dim) + Have I Been Pwned breach data + co-occurrence graph + domain variants
+12. **Analysis**: PII/NPI detection (16+ types), weak password detection, Risk Score (0-100)
+13. **Storage**: PostgreSQL with deduplication graph, breach metadata, Chain of Custody records, anomaly scores
+14. **Secure Deletion**: NIST SP 800-88 3-pass overwrite shredding of temporary files
+15. **Output**: JSON/CSV/JSONL with enhanced metadata (evidence ID, Chain of Custody links, risk distribution)
 
 ### Component Architecture
 
@@ -62,13 +70,16 @@ Production deployments feature:
 ## High-level System Context
 
 **Input Sources**
+
 - Files: CSV, TSV, JSON, YAML, XML, Protobuf, BSON
 - Streaming: HTTP multipart uploads with chunked processing
 
 **Processing Pipeline**
+
 - Ingestion → Normalization → Deduplication → Enrichment → Analysis → Storage/History
 
 **Interfaces**
+
 - Local CLI for ad-hoc analysis
 - REST API server endpoint (HTTP/2, TLS 1.3+, OAuth 2.0)
 - Optional batch scheduler for recurring jobs
@@ -87,12 +98,14 @@ Production deployments feature:
 ## Primary Runtime Modes
 
 ### CLI Mode
+
 - Single-process analysis for ad-hoc runs
 - Glob pattern support for batch file processing
 - Parallel processing via rayon (configurable workers)
 - Multiple output formats (JSON, CSV, Text, JSONL)
 
 ### Server Mode
+
 - Long-running service with REST ingestion and analysis endpoints
 - OAuth 2.0/OIDC authentication
 - TLS 1.3+ encryption
@@ -121,6 +134,7 @@ Production deployments feature:
 ## Key Components
 
 ### API Server (src/server.rs)
+
 - Axum 0.8 web framework with HTTP/2 support
 - TLS 1.3+ via rustls + axum-server
 - OAuth 2.0 client credentials flow
@@ -128,27 +142,32 @@ Production deployments feature:
 - Background worker coordination via job queue
 
 ### Pipeline (src/pipeline.rs, src/async_pipeline.rs)
+
 - Synchronous pipeline for CLI mode
 - Asynchronous pipeline for server mode with tokio integration
 - Composable stages: Ingest → Normalize → Dedup → Enrich → Analyze → Store
 
 ### Storage (src/storage.rs)
+
 - StorageAdapter trait for multiple backends
 - PostgreSQL implementation with pgvector for embeddings
 - Filesystem implementation for local development
 - Hash-based deduplication with vector similarity search
 
 ### Enrichment (src/enrichment.rs)
+
 - Ollama integration for embedding generation (768-dim Nomic vectors)
 - Have I Been Pwned API integration for breach data
 - Optional plugins for custom enrichment logic
 
 ### Detection (src/npi_detection.rs, src/hash_utils.rs)
+
 - PII/NPI detection: phones, SSNs, credit cards, crypto addresses, national IDs
 - Hash detection: bcrypt, scrypt, argon2, pbkdf2, MD5/SHA1/SHA256
 - Weak password detection via rainbow tables
 
 ### Normalization (src/normalization.rs)
+
 - Unicode NFKC normalization
 - ICU4X case-folding
 - Punctuation and whitespace normalization

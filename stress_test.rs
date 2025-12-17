@@ -181,6 +181,7 @@ async fn send_ingest_request(
 }
 
 /// Check job status
+#[allow(dead_code)]
 async fn check_job_status(
 	client: &reqwest::Client,
 	server_url: &str,

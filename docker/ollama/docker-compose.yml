@@ -4,11 +4,11 @@ services:
     image: ollama/ollama:latest
     container_name: dumptruck-ollama
     ports:
-      - '11434:11434'
+      - '11435:11435'
     volumes:
       - ollama-data:/root/.ollama
     environment:
-      OLLAMA_HOST: '0.0.0.0:11434'
+      OLLAMA_HOST: '0.0.0.0:11435'
       OLLAMA_CONTEXT_LENGTH: '8192'
     # GPU Support: Uncomment deploy section for NVidia GPU access
     # deploy:
@@ -30,7 +30,7 @@ services:
     # environment:
     #   OLLAMA_VULKAN: '1'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:11434/api/tags']
+      test: ['CMD', 'curl', '-f', 'http://localhost:11435/api/tags']
       interval: 10s
       timeout: 5s
       retries: 5

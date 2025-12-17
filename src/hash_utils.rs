@@ -1,4 +1,7 @@
-use sha2::{Digest as ShaDigest, Sha256};
+use md4::{Digest, Md4};
+use md5;
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
 
 use crate::rainbow_table;
 
@@ -13,14 +16,200 @@ pub fn sha256_hex_bytes(bytes: &[u8]) -> String {
 	hex::encode(res)
 }
 
+pub fn sha512_hex(input: &str) -> String {
+	sha512_hex_bytes(input.as_bytes())
+}
+
+pub fn sha512_hex_bytes(bytes: &[u8]) -> String {
+	let mut hasher = Sha512::new();
+	hasher.update(bytes);
+	let res = hasher.finalize();
+	hex::encode(res)
+}
+
+pub fn sha1_hex(input: &str) -> String {
+	sha1_hex_bytes(input.as_bytes())
+}
+
+pub fn sha1_hex_bytes(bytes: &[u8]) -> String {
+	let mut hasher = Sha1::new();
+	hasher.update(bytes);
+	let res = hasher.finalize();
+	hex::encode(res)
+}
+
+pub fn md5_hex(input: &str) -> String {
+	md5_hex_bytes(input.as_bytes())
+}
+
 pub fn md5_hex_bytes(bytes: &[u8]) -> String {
 	let digest = md5::compute(bytes);
 	hex::encode(digest.0)
 }
 
+/// Generate NTLM hash (Windows NT LAN Manager hash).
+/// NTLM uses UTF-16LE encoding followed by MD4 hashing.
+/// Note: MD4 is cryptographically broken but included for compatibility with legacy Windows systems.
+pub fn ntlm_hex(input: &str) -> String {
+	// NTLM uses UTF-16 little-endian encoding
+	let utf16_bytes: Vec<u8> = input
+		.encode_utf16()
+		.flat_map(|c| c.to_le_bytes().to_vec())
+		.collect();
+
+	// MD4 hash (cryptographically broken but standard for NTLM)
+	let mut hasher = Md4::new();
+	hasher.update(&utf16_bytes);
+	let digest = hasher.finalize();
+	format!("{:X}", digest)
+}
+
+/// Hash algorithm types detected by fingerprinting.
+/// This enum identifies which hashing algorithm was likely used to create a given hash.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HashAlgorithmFingerprint {
+	/// SHA1 without salt (detected by 40-char hex pattern)
+	Sha1Unsalted,
+	/// MD5 without salt (detected by 32-char hex pattern)
+	Md5Unsalted,
+	/// SHA256 without salt (detected by 64-char hex pattern)
+	Sha256Unsalted,
+	/// SHA512 without salt (detected by 128-char hex pattern)
+	Sha512Unsalted,
+	/// Bcrypt with salt (detected by $2a$, $2b$, $2y$ prefix)
+	Bcrypt,
+	/// Scrypt with salt (detected by $7$ prefix)
+	Scrypt,
+	/// Argon2 with salt (detected by $argon2id$, $argon2i$, $argon2d$ prefix)
+	Argon2,
+	/// PBKDF2 with salt (detected by $pbkdf2-sha256$ or $pbkdf2-sha512$ prefix)
+	Pbkdf2,
+	/// Unknown or unrecognized hash algorithm
+	Unknown,
+}
+
+/// Result of hash algorithm fingerprinting.
+/// Contains the identified algorithm, weakness assessment, and human-readable description.
+#[derive(Debug, Clone)]
+pub struct FingerprintMatch {
+	/// The identified hash algorithm
+	pub algorithm: HashAlgorithmFingerprint,
+	/// Whether the hash algorithm is considered weak for security
+	pub is_weak: bool,
+	/// Human-readable description of the detection result
+	pub description: String,
+}
+
+/// Detect the hash algorithm type from a hash string's fingerprint.
+///
+/// This function analyzes the structure and format of a hash to identify which algorithm
+/// was likely used to create it:
+/// - **Unsalted (weak)**: SHA1, MD5, SHA256 (detected by hex pattern length)
+/// - **Salted (strong)**: Bcrypt, Scrypt, Argon2, PBKDF2 (detected by algorithm prefix)
+///
+/// # Arguments
+/// * `hash_value` - The hash string to analyze
+///
+/// # Returns
+/// A `FingerprintMatch` containing the algorithm, weakness assessment, and description.
+///
+/// # Examples
+/// ```
+/// use dumptruck::hash_utils::{identify_hash_fingerprint, HashAlgorithmFingerprint};
+/// let result = identify_hash_fingerprint("5f4dcc3b5aa765d61d8327deb882cf99"); // MD5
+/// assert_eq!(result.algorithm, HashAlgorithmFingerprint::Md5Unsalted);
+/// assert!(result.is_weak);
+///
+/// let result = identify_hash_fingerprint("$2b$12$abcdefghijklmnopqrst.hash"); // Bcrypt
+/// assert_eq!(result.algorithm, HashAlgorithmFingerprint::Bcrypt);
+/// assert!(!result.is_weak);
+/// ```
+pub fn identify_hash_fingerprint(hash_value: &str) -> FingerprintMatch {
+	let trimmed = hash_value.trim();
+
+	// Check for common salted hash algorithm prefixes (strong algorithms with salt)
+	if trimmed.starts_with("$2a$") || trimmed.starts_with("$2b$") || trimmed.starts_with("$2y$") {
+		return FingerprintMatch {
+			algorithm: HashAlgorithmFingerprint::Bcrypt,
+			is_weak: false,
+			description: "Bcrypt hash (salted, cryptographically strong)".to_string(),
+		};
+	}
+
+	if trimmed.starts_with("$7$") {
+		return FingerprintMatch {
+			algorithm: HashAlgorithmFingerprint::Scrypt,
+			is_weak: false,
+			description: "Scrypt hash (salted, memory-hard)".to_string(),
+		};
+	}
+
+	if trimmed.starts_with("$argon2id$")
+		|| trimmed.starts_with("$argon2i$")
+		|| trimmed.starts_with("$argon2d$")
+	{
+		return FingerprintMatch {
+			algorithm: HashAlgorithmFingerprint::Argon2,
+			is_weak: false,
+			description: "Argon2 hash (salted, memory-hard, time-hard)".to_string(),
+		};
+	}
+
+	if trimmed.starts_with("$pbkdf2-sha256$") || trimmed.starts_with("$pbkdf2-sha512$") {
+		return FingerprintMatch {
+			algorithm: HashAlgorithmFingerprint::Pbkdf2,
+			is_weak: false,
+			description: "PBKDF2 hash (salted, iterated)".to_string(),
+		};
+	}
+
+	// Check for simple hex hashes (unsalted, weak)
+	let is_hex_only = trimmed.chars().all(|c| c.is_ascii_hexdigit());
+	if is_hex_only {
+		match trimmed.len() {
+			40 => {
+				return FingerprintMatch {
+					algorithm: HashAlgorithmFingerprint::Sha1Unsalted,
+					is_weak: true,
+					description: "SHA1 hash (unsalted, deprecated)".to_string(),
+				};
+			}
+			32 => {
+				return FingerprintMatch {
+					algorithm: HashAlgorithmFingerprint::Md5Unsalted,
+					is_weak: true,
+					description: "MD5 hash (unsalted, weak)".to_string(),
+				};
+			}
+			64 => {
+				return FingerprintMatch {
+					algorithm: HashAlgorithmFingerprint::Sha256Unsalted,
+					is_weak: true,
+					description: "SHA256 hash (unsalted)".to_string(),
+				};
+			}
+			128 => {
+				return FingerprintMatch {
+					algorithm: HashAlgorithmFingerprint::Sha512Unsalted,
+					is_weak: true,
+					description: "SHA512 hash (unsalted)".to_string(),
+				};
+			}
+			_ => {}
+		}
+	}
+
+	// If we get here, we couldn't identify it
+	FingerprintMatch {
+		algorithm: HashAlgorithmFingerprint::Unknown,
+		is_weak: false,
+		description: "Unknown or unrecognized hash algorithm".to_string(),
+	}
+}
+
 /// Detect if a credential value appears to be a pre-hashed password.
 /// Returns true if the value matches common hash algorithm patterns:
-/// - Simple hex hashes: 32 chars (MD5), 40 chars (SHA1), 64 chars (SHA256)
+/// - Simple hex hashes: 32 chars (MD5), 64 chars (SHA256)
 /// - Salted hash prefixes: bcrypt ($2a$, $2b$, $2y$), scrypt ($7$), argon2 ($argon2id$, $argon2i$)
 /// - Base64-like encoding patterns (common for encoded hashes)
 /// - Known hashes of common test passwords ("password", "12345", etc.)
@@ -53,7 +242,7 @@ pub fn is_credential_hash(cred_value: &str) -> bool {
 		return true; // pbkdf2
 	}
 
-	// Check for simple hex hashes (MD5, SHA1, SHA256 without algorithm prefix)
+	// Check for simple hex hashes (MD5, SHA256 without algorithm prefix)
 	// Must be all hex characters (lowercase only for consistency) and match known lengths
 	let is_hex_only = trimmed.chars().all(|c| c.is_ascii_hexdigit());
 	if is_hex_only
@@ -63,7 +252,6 @@ pub fn is_credential_hash(cred_value: &str) -> bool {
 	{
 		match trimmed.len() {
 			32 => return true,  // MD5
-			40 => return true,  // SHA1
 			64 => return true,  // SHA256
 			128 => return true, // SHA512
 			_ => {}
@@ -111,14 +299,6 @@ mod tests {
 	fn test_is_credential_hash_md5() {
 		// MD5 hash of "password123" = 482c811da5d5b4bc6d497ffa98491e38
 		assert!(is_credential_hash("482c811da5d5b4bc6d497ffa98491e38"));
-	}
-
-	#[test]
-	fn test_is_credential_hash_sha1() {
-		// SHA1 hash (40 hex chars)
-		assert!(is_credential_hash(
-			"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
-		));
 	}
 
 	#[test]
@@ -232,24 +412,6 @@ mod tests {
 	}
 
 	#[test]
-	fn test_is_credential_hash_common_passwords_sha1() {
-		// SHA1 hashes of common placeholder passwords
-		assert!(is_credential_hash(
-			"5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"
-		)); // "password"
-		assert!(is_credential_hash("8cb2237d4cb1444b40ddb696f6d952e2")); // "12345"
-		assert!(is_credential_hash(
-			"7c4a8d09ca3762af61e59520943dc26494f8941b"
-		)); // "123456"
-		assert!(is_credential_hash(
-			"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
-		)); // "test"
-		assert!(is_credential_hash(
-			"d033e22ae348aeb5660fc2140aec35850c4da997"
-		)); // "admin"
-	}
-
-	#[test]
 	fn test_is_credential_hash_common_passwords_sha256() {
 		// SHA256 hashes of common placeholder passwords
 		assert!(is_credential_hash(
@@ -274,5 +436,166 @@ mod tests {
 		// Common password hashes should match regardless of case
 		assert!(is_credential_hash("5F4DCC3B5AA765D61D8327DEB882CF99")); // uppercase MD5
 		assert!(is_credential_hash("5f4dcc3b5AA765D61d8327deb882CF99")); // mixed case
+	}
+
+	// ===== Fingerprinting Tests =====
+
+	#[test]
+	fn test_fingerprint_md5_unsalted() {
+		let result = identify_hash_fingerprint("482c811da5d5b4bc6d497ffa98491e38");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Md5Unsalted);
+		assert!(result.is_weak);
+		assert!(result.description.contains("MD5"));
+	}
+
+	#[test]
+	fn test_fingerprint_sha1_unsalted() {
+		let result = identify_hash_fingerprint("5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Sha1Unsalted);
+		assert!(result.is_weak);
+		assert!(result.description.contains("SHA1"));
+	}
+
+	#[test]
+	fn test_fingerprint_sha256_unsalted() {
+		let result = identify_hash_fingerprint(
+			"5e884898da28047151d0e56f8dc62927051d5e07d5d91ff5e95b1fee3e06a717",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Sha256Unsalted);
+		assert!(result.is_weak);
+		assert!(result.description.contains("SHA256"));
+	}
+
+	#[test]
+	fn test_fingerprint_sha512_unsalted() {
+		let result = identify_hash_fingerprint(
+			"cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Sha512Unsalted);
+		assert!(result.is_weak);
+		assert!(result.description.contains("SHA512"));
+	}
+
+	#[test]
+	fn test_fingerprint_bcrypt() {
+		let result = identify_hash_fingerprint(
+			"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36MM32Oi",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Bcrypt);
+		assert!(!result.is_weak);
+		assert!(result.description.contains("Bcrypt"));
+
+		let result = identify_hash_fingerprint(
+			"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Bcrypt);
+		assert!(!result.is_weak);
+
+		let result = identify_hash_fingerprint(
+			"$2y$10$S9sBbWcp.YdJUVJvVCN/uOKlxY2GiY0l6DQ4y.xQmGj9Z3Z7G8p7m",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Bcrypt);
+		assert!(!result.is_weak);
+	}
+
+	#[test]
+	fn test_fingerprint_scrypt() {
+		let result = identify_hash_fingerprint(
+			"$7$C6..../....SodiumChloride$kBGj9fHzHvFQMKkF4aBNYV4ZYvnP4q7Z/vL5Z6Z5Z6Z",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Scrypt);
+		assert!(!result.is_weak);
+		assert!(result.description.contains("Scrypt"));
+	}
+
+	#[test]
+	fn test_fingerprint_argon2() {
+		let result = identify_hash_fingerprint(
+			"$argon2id$v=19$m=19456,t=2,p=1$gzZBvDQIyBAq/vLDTTQDrw$e0hDlJHyJhVPJ1w8khXcBRR1H8LvGeYpNdQRSVmqG8c",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Argon2);
+		assert!(!result.is_weak);
+		assert!(result.description.contains("Argon2"));
+
+		let result = identify_hash_fingerprint(
+			"$argon2i$v=19$m=65536,t=3,p=4$saltsalt$xJQZ9Bj8OvXyX8Bxdn3sblzqVW8a8jzcf8V8LqPpS/k",
+		);
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Argon2);
+		assert!(!result.is_weak);
+	}
+
+	#[test]
+	fn test_fingerprint_pbkdf2() {
+		let result =
+			identify_hash_fingerprint("$pbkdf2-sha256$260000$saltsalt$abcdefg1234567890abcdefg");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Pbkdf2);
+		assert!(!result.is_weak);
+		assert!(result.description.contains("PBKDF2"));
+
+		let result = identify_hash_fingerprint("$pbkdf2-sha512$260000$salt$xyz123abc");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Pbkdf2);
+		assert!(!result.is_weak);
+	}
+
+	#[test]
+	fn test_fingerprint_unknown() {
+		let result = identify_hash_fingerprint("not_a_hash_at_all!");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Unknown);
+		assert!(!result.is_weak);
+		assert!(result.description.contains("Unknown"));
+
+		let result = identify_hash_fingerprint("plaintext_password");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Unknown);
+
+		let result = identify_hash_fingerprint("user@example.com");
+		assert_eq!(result.algorithm, HashAlgorithmFingerprint::Unknown);
+	}
+
+	#[test]
+	fn test_fingerprint_case_insensitive() {
+		// Fingerprinting should work with both lowercase and uppercase hex
+		let result_lower = identify_hash_fingerprint("5f4dcc3b5aa765d61d8327deb882cf99");
+		let result_upper = identify_hash_fingerprint("5F4DCC3B5AA765D61D8327DEB882CF99");
+
+		assert_eq!(result_lower.algorithm, result_upper.algorithm);
+		assert_eq!(
+			result_lower.algorithm,
+			HashAlgorithmFingerprint::Md5Unsalted
+		);
+	}
+
+	#[test]
+	fn test_fingerprint_weak_vs_strong() {
+		// Unsalted algorithms should be weak
+		let unsalted = vec![
+			identify_hash_fingerprint("482c811da5d5b4bc6d497ffa98491e38"), // MD5
+			identify_hash_fingerprint("5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8"), // SHA1
+			identify_hash_fingerprint(
+				"5e884898da28047151d0e56f8dc62927051d5e07d5d91ff5e95b1fee3e06a717",
+			), // SHA256
+		];
+		for result in unsalted {
+			assert!(result.is_weak, "Unsalted hashes should be weak");
+		}
+
+		// Salted algorithms should be strong
+		let salted = vec![
+			identify_hash_fingerprint(
+				"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36MM32Oi",
+			), // Bcrypt
+			identify_hash_fingerprint(
+				"$7$C6..../....SodiumChloride$kBGj9fHzHvFQMKkF4aBNYV4ZYvnP4q7Z/vL5Z6Z5Z6Z",
+			), // Scrypt
+			identify_hash_fingerprint(
+				"$argon2id$v=19$m=19456,t=2,p=1$gzZBvDQIyBAq/vLDTTQDrw$e0hDlJHyJhVPJ1w8khXcBRR1H8LvGeYpNdQRSVmqG8c",
+			), // Argon2
+		];
+		for result in salted {
+			assert!(
+				!result.is_weak,
+				"Salted algorithms should be strong: {:?}",
+				result.algorithm
+			);
+		}
 	}
 }

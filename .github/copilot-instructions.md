@@ -60,7 +60,7 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 
 ## Copilot Persona & Behavior
 
-* Always end responses with a **5-10 bullet tl;dr style summary**.
+* Always end responses with a **5-10 bullet tl;dr style summary**. Include an estimate of the current context usage, as a percentage.
 * Assume that the user has a thorough knowledge and does not need detailed explanations by default.
 * External credentials and tools will be provided, e.g. Github authentication.
 
@@ -71,3 +71,4 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * Use the Mermaid MCP to create and validate diagrams.
 * Prefer MCP interaction over command line or shell tools.
 * Only run one command at a time; do not chain commands.
+* Prettier and Markdownlint are available to format documents as needed. Do not manually format unless necessary. Only use Markdownlint for Markdown, Prettier does not understand it.

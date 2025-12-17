@@ -10,7 +10,7 @@ const STARTUP_RETRY_DELAY: Duration = Duration::from_secs(2);
 const DB_CONTAINER: &str = "dumptruck-db";
 const OLLAMA_CONTAINER: &str = "dumptruck-ollama";
 const DB_PORT: u16 = 5432;
-const OLLAMA_PORT: u16 = 11434;
+const OLLAMA_PORT: u16 = 11435;
 
 /// Tracks which services were started by the application
 pub struct ServiceManager {
@@ -30,9 +30,10 @@ impl ServiceManager {
 		// Check and start PostgreSQL
 		if !is_service_running("localhost", DB_PORT, verbose).await {
 			if verbose >= 1 {
-				eprintln!("[INFO] PostgreSQL not available, starting containers...");
+				eprintln!("[INFO] PostgreSQL not available, starting PostgreSQL...");
 			}
-			self.start_containers(verbose).await?;
+			self.start_service("docker/postgres", "postgres", verbose)
+				.await?;
 			self.started_containers.push(DB_CONTAINER.to_string());
 		} else if verbose >= 2 {
 			eprintln!("[DEBUG] PostgreSQL is already running");
@@ -41,12 +42,10 @@ impl ServiceManager {
 		// Check and start Ollama
 		if !is_service_running("localhost", OLLAMA_PORT, verbose).await {
 			if verbose >= 1 {
-				eprintln!("[INFO] Ollama not available, starting containers...");
+				eprintln!("[INFO] Ollama not available, starting Ollama...");
 			}
-			if !self.started_containers.iter().any(|c| c == DB_CONTAINER) {
-				// Only start if we haven't already
-				self.start_containers(verbose).await?;
-			}
+			self.start_service("docker/ollama", "ollama", verbose)
+				.await?;
 			self.started_containers.push(OLLAMA_CONTAINER.to_string());
 		} else if verbose >= 2 {
 			eprintln!("[DEBUG] Ollama is already running");
@@ -69,30 +68,6 @@ impl ServiceManager {
 			Ok(_) => true,
 			Err(_) => false,
 		}
-	}
-
-	/// Start individual docker compose stacks from their respective directories
-	async fn start_containers(&self, verbose: u32) -> Result<(), String> {
-		if verbose >= 2 {
-			eprintln!("[DEBUG] Attempting to start containers with docker compose from subdirectories");
-		}
-
-		// Start PostgreSQL from docker/postgres/
-		if verbose >= 1 {
-			eprintln!("[INFO] Starting PostgreSQL from docker/postgres/");
-		}
-		self.start_service("docker/postgres", "postgres", verbose).await?;
-
-		// Start Ollama from docker/ollama/
-		if verbose >= 1 {
-			eprintln!("[INFO] Starting Ollama from docker/ollama/");
-		}
-		self.start_service("docker/ollama", "ollama", verbose).await?;
-
-		if verbose >= 1 {
-			eprintln!("[INFO] All services started successfully");
-		}
-		Ok(())
 	}
 
 	/// Start a docker compose service from its directory
@@ -134,6 +109,7 @@ impl ServiceManager {
 	/// Wait for all services to be ready
 	async fn wait_for_services_ready(&self, verbose: u32) -> Result<(), String> {
 		let deadline = Instant::now() + STARTUP_TIMEOUT;
+		let mut attempt = 0;
 
 		loop {
 			let pg_ready = Self::is_service_available("localhost", DB_PORT).await;
@@ -155,10 +131,21 @@ impl ServiceManager {
 				));
 			}
 
-			if verbose >= 3 {
+			attempt += 1;
+			if verbose >= 1 {
+				let pg_status = if pg_ready { "ready" } else { "waiting" };
+				let ollama_status = if ollama_ready { "ready" } else { "waiting" };
+				eprintln!(
+					"[INFO] Waiting for services... (attempt {}). PostgreSQL: {}, Ollama: {}",
+					attempt, pg_status, ollama_status
+				);
+			} else if verbose >= 2 {
 				let pg_status = if pg_ready { "ready" } else { "not ready" };
 				let ollama_status = if ollama_ready { "ready" } else { "not ready" };
-				eprintln!("[DEBUG] Service status - PostgreSQL: {}, Ollama: {}", pg_status, ollama_status);
+				eprintln!(
+					"[DEBUG] Service status - PostgreSQL: {}, Ollama: {}",
+					pg_status, ollama_status
+				);
 			}
 
 			sleep(STARTUP_RETRY_DELAY).await;
@@ -175,7 +162,10 @@ impl ServiceManager {
 		}
 
 		if verbose >= 1 {
-			eprintln!("[INFO] Stopping {} container(s) that were started", self.started_containers.len());
+			eprintln!(
+				"[INFO] Stopping {} container(s) that were started",
+				self.started_containers.len()
+			);
 		}
 
 		// Stop PostgreSQL if it was started
@@ -183,11 +173,17 @@ impl ServiceManager {
 			if verbose >= 2 {
 				eprintln!("[DEBUG] Stopping PostgreSQL service");
 			}
-			let _ = self.stop_service("docker/postgres", "postgres", verbose).await;
+			let _ = self
+				.stop_service("docker/postgres", "postgres", verbose)
+				.await;
 		}
 
 		// Stop Ollama if it was started
-		if self.started_containers.iter().any(|c| c == OLLAMA_CONTAINER) {
+		if self
+			.started_containers
+			.iter()
+			.any(|c| c == OLLAMA_CONTAINER)
+		{
 			if verbose >= 2 {
 				eprintln!("[DEBUG] Stopping Ollama service");
 			}
@@ -211,7 +207,9 @@ impl ServiceManager {
 		if verbose >= 2 {
 			eprintln!("[DEBUG] Stopping PostgreSQL service");
 		}
-		let pg_result = self.stop_service("docker/postgres", "postgres", verbose).await;
+		let pg_result = self
+			.stop_service("docker/postgres", "postgres", verbose)
+			.await;
 
 		// Stop Ollama
 		if verbose >= 2 {
@@ -271,7 +269,10 @@ impl ServiceManager {
 /// Check if a service is running on the given host and port
 async fn is_service_running(host: &str, port: u16, verbose: u32) -> bool {
 	if verbose >= 3 {
-		eprintln!("[DEBUG] Checking if service is running on {}:{}", host, port);
+		eprintln!(
+			"[DEBUG] Checking if service is running on {}:{}",
+			host, port
+		);
 	}
 	ServiceManager::is_service_available(host, port).await
 }
@@ -318,10 +319,9 @@ pub async fn start() -> Result<(), io::Error> {
 							}
 						}
 					}
-					return Err(last_err.unwrap_or_else(|| io::Error::new(
-						io::ErrorKind::Other,
-						"ollama service failed to start",
-					)));
+					return Err(last_err.unwrap_or_else(|| {
+						io::Error::new(io::ErrorKind::Other, "ollama service failed to start")
+					}));
 				} else {
 					return Err(io::Error::new(
 						io::ErrorKind::TimedOut,

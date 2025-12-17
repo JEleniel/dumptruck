@@ -28,10 +28,10 @@ pub struct OllamaClient {
 
 impl OllamaClient {
 	/// Create a new Ollama client pointing to the given base URL and model.
-	/// Default base_url is http://localhost:11434, model is "nomic-embed-text".
+	/// Default base_url is http://localhost:11435, model is "nomic-embed-text".
 	pub fn new(base_url: Option<String>, model: Option<String>) -> Self {
 		OllamaClient {
-			base_url: base_url.unwrap_or_else(|| "http://localhost:11434".to_string()),
+			base_url: base_url.unwrap_or_else(|| "http://localhost:11435".to_string()),
 			model: model.unwrap_or_else(|| "nomic-embed-text".to_string()),
 			client: reqwest::Client::new(),
 		}
@@ -121,14 +121,14 @@ mod tests {
 	#[test]
 	fn test_ollama_client_new() {
 		let client = OllamaClient::new(None, None);
-		assert_eq!(client.base_url, "http://localhost:11434");
+		assert_eq!(client.base_url, "http://localhost:11435");
 		assert_eq!(client.model, "nomic-embed-text");
 
 		let client = OllamaClient::new(
-			Some("http://example.com:11434".to_string()),
+			Some("http://example.com:11435".to_string()),
 			Some("custom-model".to_string()),
 		);
-		assert_eq!(client.base_url, "http://example.com:11434");
+		assert_eq!(client.base_url, "http://example.com:11435");
 		assert_eq!(client.model, "custom-model");
 	}
 }

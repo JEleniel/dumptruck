@@ -1,0 +1,16 @@
+email,first_breach,num_breaches,password_changed
+adobe-incident@example.com,2013,1,no
+equifax-breach@example.com,2017,3,yes
+yahoo-account@example.com,2013,2,yes
+linkedin-email@example.com,2012,1,no
+twitter-user@example.com,2018,1,yes
+facebook-old@example.com,2019,2,yes
+dropbox-account@example.com,2012,1,no
+lastpass-breach@example.com,2015,1,yes
+anthem-patient@example.com,2015,1,no
+home-depot@example.com,2014,1,yes
+target-breach@example.com,2013,1,yes
+sony-pictures@example.com,2014,1,no
+uber-leaked@example.com,2016,1,yes
+verizon-exposed@example.com,2015,1,no
+experian-compromised@example.com,2015,1,yes

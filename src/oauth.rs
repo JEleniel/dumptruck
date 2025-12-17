@@ -45,7 +45,6 @@ pub struct OAuthToken {
 struct CachedToken {
 	token: String,
 	expires_at: DateTime<Utc>,
-	scope: Option<String>,
 }
 
 /// OAuth 2.0 Client Credentials Flow provider
@@ -83,7 +82,9 @@ impl OAuthProvider {
 			let cached = self.cached_token.read().await;
 			if let Some(token) = cached.as_ref() {
 				// Refresh if expiring within 1 minute
-				if let Some(refresh_time) = token.expires_at.checked_sub_signed(Duration::minutes(1)) {
+				if let Some(refresh_time) =
+					token.expires_at.checked_sub_signed(Duration::minutes(1))
+				{
 					if Utc::now() < refresh_time {
 						return Ok(token.token.clone());
 					}
@@ -97,10 +98,7 @@ impl OAuthProvider {
 		// Cache the token
 		let cached = CachedToken {
 			token: token.access_token.clone(),
-			expires_at: Utc::now()
-				+ Duration::seconds(token.expires_in)
-				- Duration::minutes(1), // Refresh 1 minute before expiry
-			scope: token.scope.clone(),
+			expires_at: Utc::now() + Duration::seconds(token.expires_in) - Duration::minutes(1), // Refresh 1 minute before expiry
 		};
 
 		{

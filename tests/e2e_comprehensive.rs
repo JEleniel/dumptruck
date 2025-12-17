@@ -17,7 +17,7 @@ use dumptruck::{
 	async_pipeline::{AsyncPipeline, AsyncPipelineConfig},
 	enrichment::ChecksumEnricher,
 	normalization::normalize_email_with_config,
-	npi_detection::{detect_pii, PiiType},
+	npi_detection::detect_pii,
 	storage::StorageAdapter,
 };
 
@@ -174,13 +174,16 @@ bob@example.org,credential123
 	let final_storage = pipeline.ingest(csv).await.expect("ingest failed");
 
 	// Check for any events (duplicate or new credential)
-	let has_dedup_or_tracking = final_storage.rows.iter().any(|r| {
-		r.get(0).map(|s| s.as_str()).map(|s| 
-			s.contains("__duplicate_") || 
-			s.contains("__address_") || 
-			s.contains("__cred_") ||
-			s.contains("__known_address_")
-		).unwrap_or(false)
+	let _has_dedup_or_tracking = final_storage.rows.iter().any(|r| {
+		r.get(0)
+			.map(|s| s.as_str())
+			.map(|s| {
+				s.contains("__duplicate_")
+					|| s.contains("__address_")
+					|| s.contains("__cred_")
+					|| s.contains("__known_address_")
+			})
+			.unwrap_or(false)
 	});
 
 	// At minimum, we should have processed rows and metadata
@@ -232,7 +235,10 @@ Francois Durand,francois@example.fr,pass4
 		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__new_address__"))
 		.count();
 
-	assert!(new_addr_count >= 2, "Expected new address detection for different names");
+	assert!(
+		new_addr_count >= 2,
+		"Expected new address detection for different names"
+	);
 }
 
 /// **Test 4**: Email normalization and canonicalization
@@ -277,7 +283,7 @@ fn test_pii_detection_comprehensive() {
 	// Phone numbers - just verify function works
 	let pii = detect_pii("555-123-4567", None);
 	assert!(pii.is_empty() || !pii.is_empty()); // Always true, just testing function executes
-	
+
 	// Various formats
 	let _pii = detect_pii("555.123.4567", None);
 	let _pii = detect_pii("+1-555-123-4567", None);
@@ -437,10 +443,7 @@ charlie@example.com,pass3
 		.iter()
 		.filter(|r| r.iter().any(|f| f.starts_with("file_id:")))
 		.collect();
-	assert!(
-		!file_id_rows.is_empty(),
-		"Should append file_id to rows"
-	);
+	assert!(!file_id_rows.is_empty(), "Should append file_id to rows");
 
 	// Should have new address events
 	let new_addr_rows: Vec<_> = final_storage
@@ -486,17 +489,15 @@ bob@example.org,Bob Jones,pass2
 			"Fields should not contain null bytes (JSON incompatible)"
 		);
 		assert!(
-			row.iter().all(|field| !field.is_empty() || field.is_empty()), // Always true, just checking structure
+			row.iter()
+				.all(|field| !field.is_empty() || field.is_empty()), // Always true, just checking structure
 			"Field structure should be valid"
 		);
 	}
 
 	// Verify CSV compatibility (no unescaped quotes at field boundaries)
 	// This is a simplification; full CSV validation would be more complex
-	assert!(
-		final_storage.rows.len() > 0,
-		"Should have output rows"
-	);
+	assert!(final_storage.rows.len() > 0, "Should have output rows");
 }
 
 /// **Test 10**: Pipeline composition and configuration
@@ -526,7 +527,10 @@ bob@example.org,pass2
 	let pipeline = AsyncPipeline::with_config(adapter, enricher, storage, config_low);
 	let result = pipeline.ingest(csv).await;
 
-	assert!(result.is_ok(), "Pipeline with low threshold should complete");
+	assert!(
+		result.is_ok(),
+		"Pipeline with low threshold should complete"
+	);
 
 	// Test with high similarity threshold
 	let adapter2 = CsvAdapter::new();
@@ -542,7 +546,10 @@ bob@example.org,pass2
 	let pipeline2 = AsyncPipeline::with_config(adapter2, enricher2, storage2, config_high);
 	let result2 = pipeline2.ingest(csv).await;
 
-	assert!(result2.is_ok(), "Pipeline with high threshold should complete");
+	assert!(
+		result2.is_ok(),
+		"Pipeline with high threshold should complete"
+	);
 
 	// Both should succeed with the same CSV
 	// (Detailed behavior differences would require more complex assertions)

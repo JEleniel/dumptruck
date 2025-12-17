@@ -1,8 +1,13 @@
 //! Command handlers for Dumptruck CLI.
 
 use crate::adapters::FormatAdapter;
-use crate::cli::{IngestArgs, OutputFormat, StatusArgs, ServerArgs};
-use crate::output::{CsvFormatter, IngestResult, JsonFormatter, JsonlFormatter, OutputFormatter, TextFormatter, write_output};
+use crate::cli::{IngestArgs, OutputFormat, ServerArgs, StatusArgs};
+use crate::detection;
+use crate::output::{
+	CsvFormatter, IngestResult, JsonFormatter, JsonlFormatter, OutputFormatter, TextFormatter,
+	write_output,
+};
+use crate::working_copy::WorkingCopyManager;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -19,23 +24,40 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 	}
 
 	// Load configuration if provided
-	let _config = if let Some(config_path) = &args.config {
+	let config = if let Some(config_path) = &args.config {
 		if args.verbose >= 2 {
 			eprintln!("[DEBUG] Loading configuration from: {:?}", config_path);
 		}
-		crate::config::Config::from_file(config_path).map_err(|e| {
-			format!("Failed to load configuration: {}", e)
-		})?
+		crate::config::Config::from_file(config_path)
+			.map_err(|e| format!("Failed to load configuration: {}", e))?
 	} else {
 		crate::config::Config::default()
 	};
 
+	// Set up working copy manager
+	let working_dir = if let Some(dir) = &args.working_dir {
+		dir.clone()
+	} else if let Some(config_path) = &config.working_directory.path {
+		std::path::PathBuf::from(config_path)
+	} else {
+		// Default to /tmp/dumptruck/
+		std::path::PathBuf::from("/tmp/dumptruck")
+	};
+
+	let working_copy_mgr =
+		WorkingCopyManager::new(&working_dir, args.verify_noexec, args.verbose as u32)
+			.map_err(|e| format!("Failed to initialize working directory: {}", e))?;
+
+	if args.verbose >= 1 {
+		eprintln!("[INFO] Working directory initialized: {:?}", working_dir);
+	}
+
 	// Process files in parallel
 	let mut total_rows = 0;
-	let total_unique_addresses = 0;
-	let total_hashed_credentials = 0;
-	let total_weak_passwords = 0;
-	let total_breached_addresses = 0;
+	let mut total_unique_addresses = 0_usize;
+	let mut total_hashed_credentials = 0_usize;
+	let mut total_weak_passwords = 0_usize;
+	let _total_breached_addresses = 0;
 	let mut metadata = Vec::new();
 	let mut errors = Vec::new();
 
@@ -44,10 +66,61 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 			eprintln!("[INFO] Processing file: {:?}", file_path);
 		}
 
-		// Read file contents
-		let content = std::fs::read_to_string(file_path).map_err(|e| {
-			format!("Failed to read file {:?}: {}", file_path, e)
-		})?;
+		// Create working copy of the file
+		let working_copy_path = match working_copy_mgr.create_working_copy(file_path) {
+			Ok(path) => path,
+			Err(e) => {
+				let err_msg = format!("Failed to create working copy for {:?}: {}", file_path, e);
+				if args.verbose >= 1 {
+					eprintln!("[ERROR] {}", err_msg);
+				}
+				errors.push(err_msg);
+				continue;
+			}
+		};
+
+		// Read file contents from working copy (not original)
+		if args.verbose >= 2 {
+			eprintln!(
+				"[DEBUG] Reading file contents from working copy: {:?}",
+				working_copy_path
+			);
+		}
+
+		// Use safe_read_file to get binary detection
+		let result =
+			crate::safe_ingest::safe_read_file(&working_copy_path, args.verbose as u32).await;
+
+		let (content, safety_analysis) = match result {
+			Ok((c, _had_utf8_errors, analysis)) => (c, analysis),
+			Err(e) => {
+				let err_msg = format!("Failed to read file {:?}: {}", working_copy_path, e);
+				if args.verbose >= 1 {
+					eprintln!("[ERROR] {}", err_msg);
+				}
+				errors.push(err_msg);
+				continue;
+			}
+		};
+
+		if args.verbose >= 2 {
+			eprintln!("[DEBUG] File read complete, size: {} bytes", content.len());
+		}
+
+		// Log binary detection if applicable
+		if safety_analysis.is_binary {
+			if args.verbose >= 1 {
+				eprintln!(
+					"[WARN] Binary file detected in {:?} ({:.0}% confidence) - skipping",
+					working_copy_path, safety_analysis.binary_confidence
+				);
+			}
+			errors.push(format!(
+				"Cannot process file {:?}: Binary file detected ({:.0}% confidence)",
+				working_copy_path, safety_analysis.binary_confidence
+			));
+			continue;
+		}
 
 		// Detect or use specified format
 		let format_str = if let Some(fmt) = args.format {
@@ -60,63 +133,410 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 			eprintln!("[DEBUG] Detected format: {}", format_str);
 		}
 
+		if args.verbose >= 1 {
+			eprintln!("[INFO] Parsing {} format file...", format_str);
+		}
+
 		// Parse file content based on format
 		match format_str.as_str() {
 			"csv" => {
-				let adapter = crate::adapters::CsvAdapter::new();
-				let rows = adapter.parse(&content);
-				total_rows += rows.len();
-
-				// TODO: In a full implementation, pass rows through the async pipeline
-				// For now, just count them
 				if args.verbose >= 2 {
-					eprintln!("[DEBUG] Parsed {} rows from CSV", rows.len());
+					eprintln!("[DEBUG] Initializing CSV adapter...");
+				}
+				let adapter = crate::adapters::CsvAdapter::new();
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Starting CSV parsing...");
+				}
+				let rows = adapter.parse(&content);
+
+				if args.verbose >= 1 {
+					eprintln!("[INFO] CSV parsing complete: {} rows parsed", rows.len());
 				}
 
-				metadata.push(format!("Processed {} rows from {}", rows.len(), file_path.display()));
+				// Extract headers if first row looks like a header
+				let headers = if !rows.is_empty() {
+					let first = &rows[0];
+					if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic())) {
+						if args.verbose >= 2 {
+							eprintln!("[DEBUG] First row detected as header");
+						}
+						Some(first.clone())
+					} else {
+						None
+					}
+				} else {
+					None
+				};
+
+				// Run detection on all rows
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Starting detection pipeline on {} rows", rows.len());
+				}
+				let mut detections = Vec::new();
+				for (idx, row) in rows.iter().enumerate() {
+					// Skip header row if present
+					if idx == 0 && headers.is_some() {
+						continue;
+					}
+					let detection = detection::detect_row(row, headers.as_deref(), idx);
+					detections.push(detection);
+				}
+
+				if args.verbose >= 2 {
+					eprintln!(
+						"[DEBUG] Detection pipeline complete on {} rows",
+						detections.len()
+					);
+				}
+
+				// Aggregate detection statistics
+				let stats = detection::aggregate_results(&detections);
+				total_rows += rows.len();
+				total_unique_addresses += stats.unique_addresses;
+				total_hashed_credentials += stats.hashed_credentials_detected;
+				total_weak_passwords += stats.weak_passwords_found;
+
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Detection results for file:");
+					eprintln!("[DEBUG]   Unique addresses: {}", stats.unique_addresses);
+					eprintln!(
+						"[DEBUG]   Hashed credentials: {}",
+						stats.hashed_credentials_detected
+					);
+					eprintln!("[DEBUG]   Weak passwords: {}", stats.weak_passwords_found);
+				}
+
+				metadata.push(format!(
+					"Processed {} rows from {} | Unique addresses: {}, Hashed credentials: {}, Weak passwords: {}",
+					rows.len(),
+					file_path.display(),
+					stats.unique_addresses,
+					stats.hashed_credentials_detected,
+					stats.weak_passwords_found
+				));
 			}
 			"json" => {
-				// Simple JSON array parsing
-				if let Ok(parsed) = serde_json::from_str::<Vec<Vec<String>>>(&content) {
-					total_rows += parsed.len();
-					if args.verbose >= 2 {
-						eprintln!("[DEBUG] Parsed {} rows from JSON", parsed.len());
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Starting JSON parsing with universal parser...");
+				}
+				// Parse JSON and check structure
+				match serde_json::from_str::<serde_json::Value>(&content) {
+					Ok(json_value) => {
+						// Use universal parser to handle any JSON structure
+						let rows = crate::universal_parser::json_to_rows(&json_value);
+
+						if rows.is_empty() {
+							let err_msg =
+								format!("No data rows found in JSON file {:?}", file_path);
+							if args.verbose >= 1 {
+								eprintln!("[ERROR] {}", err_msg);
+							}
+							errors.push(err_msg);
+						} else {
+							// Extract headers if present (assume first row is header if it contains alphabetic chars)
+							let headers = if !rows.is_empty() {
+								let first = &rows[0];
+								if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic())) {
+									if args.verbose >= 2 {
+										eprintln!("[DEBUG] First row detected as header");
+									}
+									Some(first.clone())
+								} else {
+									None
+								}
+							} else {
+								None
+							};
+
+							// Run detection on all rows
+							if args.verbose >= 2 {
+								eprintln!(
+									"[DEBUG] Starting detection pipeline on {} rows",
+									rows.len()
+								);
+							}
+							let mut detections = Vec::new();
+							for (idx, row) in rows.iter().enumerate() {
+								// Skip header row if present
+								if idx == 0 && headers.is_some() {
+									continue;
+								}
+								let detection = detection::detect_row(row, headers.as_deref(), idx);
+								detections.push(detection);
+							}
+
+							if args.verbose >= 2 {
+								eprintln!(
+									"[DEBUG] Detection pipeline complete on {} rows",
+									detections.len()
+								);
+							}
+
+							// Aggregate detection statistics
+							let stats = detection::aggregate_results(&detections);
+							total_rows += rows.len();
+							total_unique_addresses += stats.unique_addresses;
+							total_hashed_credentials += stats.hashed_credentials_detected;
+							total_weak_passwords += stats.weak_passwords_found;
+
+							if args.verbose >= 1 {
+								eprintln!(
+									"[INFO] JSON parsing complete: {} rows parsed",
+									rows.len()
+								);
+							}
+							if args.verbose >= 2 {
+								eprintln!("[DEBUG] Detection results for file:");
+								eprintln!("[DEBUG]   Unique addresses: {}", stats.unique_addresses);
+								eprintln!(
+									"[DEBUG]   Hashed credentials: {}",
+									stats.hashed_credentials_detected
+								);
+								eprintln!(
+									"[DEBUG]   Weak passwords: {}",
+									stats.weak_passwords_found
+								);
+							}
+
+							metadata.push(format!(
+								"Processed {} rows from {} | Unique addresses: {}, Hashed credentials: {}, Weak passwords: {}",
+								rows.len(),
+								file_path.display(),
+								stats.unique_addresses,
+								stats.hashed_credentials_detected,
+								stats.weak_passwords_found
+							));
+						}
 					}
-					metadata.push(format!("Processed {} rows from {}", parsed.len(), file_path.display()));
-				} else {
-					errors.push(format!("Failed to parse JSON from {:?}", file_path));
+					Err(e) => {
+						let err_msg = format!("Failed to parse JSON from {:?}: {}", file_path, e);
+						if args.verbose >= 1 {
+							eprintln!("[ERROR] {}", err_msg);
+						}
+						errors.push(err_msg);
+					}
 				}
 			}
 			"tsv" => {
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Starting TSV parsing...");
+				}
 				// TSV parsing (similar to CSV but with tabs)
 				let rows: Vec<Vec<String>> = content
 					.lines()
 					.map(|line| line.split('\t').map(|s| s.to_string()).collect())
 					.collect();
-				total_rows += rows.len();
+
+				// Extract headers if first row looks like a header
+				let headers = if !rows.is_empty() {
+					let first = &rows[0];
+					if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic())) {
+						if args.verbose >= 2 {
+							eprintln!("[DEBUG] First row detected as header");
+						}
+						Some(first.clone())
+					} else {
+						None
+					}
+				} else {
+					None
+				};
+
+				// Run detection on all rows
 				if args.verbose >= 2 {
-					eprintln!("[DEBUG] Parsed {} rows from TSV", rows.len());
+					eprintln!("[DEBUG] Starting detection pipeline on {} rows", rows.len());
 				}
-				metadata.push(format!("Processed {} rows from {}", rows.len(), file_path.display()));
+				let mut detections = Vec::new();
+				for (idx, row) in rows.iter().enumerate() {
+					// Skip header row if present
+					if idx == 0 && headers.is_some() {
+						continue;
+					}
+					let detection = detection::detect_row(row, headers.as_deref(), idx);
+					detections.push(detection);
+				}
+
+				if args.verbose >= 2 {
+					eprintln!(
+						"[DEBUG] Detection pipeline complete on {} rows",
+						detections.len()
+					);
+				}
+
+				// Aggregate detection statistics
+				let stats = detection::aggregate_results(&detections);
+				total_rows += rows.len();
+				total_unique_addresses += stats.unique_addresses;
+				total_hashed_credentials += stats.hashed_credentials_detected;
+				total_weak_passwords += stats.weak_passwords_found;
+
+				if args.verbose >= 1 {
+					eprintln!("[INFO] TSV parsing complete: {} rows parsed", rows.len());
+				}
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Detection results for file:");
+					eprintln!("[DEBUG]   Unique addresses: {}", stats.unique_addresses);
+					eprintln!(
+						"[DEBUG]   Hashed credentials: {}",
+						stats.hashed_credentials_detected
+					);
+					eprintln!("[DEBUG]   Weak passwords: {}", stats.weak_passwords_found);
+				}
+
+				metadata.push(format!(
+					"Processed {} rows from {} | Unique addresses: {}, Hashed credentials: {}, Weak passwords: {}",
+					rows.len(),
+					file_path.display(),
+					stats.unique_addresses,
+					stats.hashed_credentials_detected,
+					stats.weak_passwords_found
+				));
+			}
+			"xml" => {
+				if args.verbose >= 2 {
+					eprintln!("[DEBUG] Starting XML parsing with universal parser...");
+				}
+				// Use universal parser to handle any XML structure
+				match crate::universal_parser::xml_to_rows(&content) {
+					Ok(rows) => {
+						if rows.is_empty() {
+							let err_msg = format!(
+								"No data rows found in XML file {:?}",
+								file_path
+							);
+							if args.verbose >= 1 {
+								eprintln!("[ERROR] {}", err_msg);
+							}
+							errors.push(err_msg);
+						} else {
+							// Extract headers if present
+							let headers = if !rows.is_empty() {
+								let first = &rows[0];
+								if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic()))
+								{
+									if args.verbose >= 2 {
+										eprintln!("[DEBUG] First row detected as header");
+									}
+									Some(first.clone())
+								} else {
+									None
+								}
+							} else {
+								None
+							};
+
+							// Run detection on all rows
+							if args.verbose >= 2 {
+								eprintln!(
+									"[DEBUG] Starting detection pipeline on {} rows",
+									rows.len()
+								);
+							}
+							let mut detections = Vec::new();
+							for (idx, row) in rows.iter().enumerate() {
+								// Skip header row if present
+								if idx == 0 && headers.is_some() {
+									continue;
+								}
+								let detection =
+									detection::detect_row(row, headers.as_deref(), idx);
+								detections.push(detection);
+							}
+
+							if args.verbose >= 2 {
+								eprintln!(
+									"[DEBUG] Detection pipeline complete on {} rows",
+									detections.len()
+								);
+							}
+
+							// Aggregate detection statistics
+							let stats = detection::aggregate_results(&detections);
+							total_rows += rows.len();
+							total_unique_addresses += stats.unique_addresses;
+							total_hashed_credentials += stats.hashed_credentials_detected;
+							total_weak_passwords += stats.weak_passwords_found;
+
+							if args.verbose >= 1 {
+								eprintln!(
+									"[INFO] XML parsing complete: {} rows parsed",
+									rows.len()
+								);
+							}
+							if args.verbose >= 2 {
+								eprintln!("[DEBUG] Detection results for file:");
+								eprintln!(
+									"[DEBUG]   Unique addresses: {}",
+									stats.unique_addresses
+								);
+								eprintln!(
+									"[DEBUG]   Hashed credentials: {}",
+									stats.hashed_credentials_detected
+								);
+								eprintln!(
+									"[DEBUG]   Weak passwords: {}",
+									stats.weak_passwords_found
+								);
+							}
+
+							metadata.push(format!(
+								"Processed {} rows from {} | Unique addresses: {}, Hashed credentials: {}, Weak passwords: {}",
+								rows.len(),
+								file_path.display(),
+								stats.unique_addresses,
+								stats.hashed_credentials_detected,
+								stats.weak_passwords_found
+							));
+						}
+					}
+					Err(e) => {
+						let err_msg = format!(
+							"Failed to parse XML structure from {:?}: {}",
+							file_path, e
+						);
+						if args.verbose >= 1 {
+							eprintln!("[ERROR] {}", err_msg);
+						}
+						errors.push(err_msg);
+					}
+				}
 			}
 			_ => {
-				errors.push(format!("Unsupported format: {}", format_str));
+				let err_msg = format!("Unsupported format: {}", format_str);
+				if args.verbose >= 1 {
+					eprintln!("[ERROR] {}", err_msg);
+				}
+				errors.push(err_msg);
 			}
 		}
 	}
 
+	if args.verbose >= 1 {
+		eprintln!("[INFO] All files processed. Total rows: {}", total_rows);
+		eprintln!(
+			"[INFO] Detection results: Unique addresses: {}, Hashed credentials: {}, Weak passwords: {}",
+			total_unique_addresses, total_hashed_credentials, total_weak_passwords
+		);
+	}
+
 	// Create result summary
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Formatting output results...");
+	}
 	let result = IngestResult {
 		rows_processed: total_rows,
 		unique_addresses: total_unique_addresses,
 		hashed_credentials_detected: total_hashed_credentials,
 		weak_passwords_found: total_weak_passwords,
-		breached_addresses: total_breached_addresses,
+		breached_addresses: 0,
 		metadata,
 		errors,
 	};
 
 	// Format output
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Creating {:?} formatter...", args.output_format);
+	}
 	let formatter: Box<dyn OutputFormatter> = match args.output_format {
 		OutputFormat::Json => Box::new(JsonFormatter),
 		OutputFormat::Csv => Box::new(CsvFormatter),
@@ -124,15 +544,44 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 		OutputFormat::Jsonl => Box::new(JsonlFormatter),
 	};
 
-	let formatted = formatter.format(&result).map_err(|e| {
-		format!("Failed to format output: {}", e)
-	})?;
+	if args.verbose >= 2 {
+		eprintln!(
+			"[DEBUG] Formatting {} results to output format...",
+			total_rows
+		);
+	}
+	let formatted = formatter
+		.format(&result)
+		.map_err(|e| format!("Failed to format output: {}", e))?;
+	if args.verbose >= 2 {
+		eprintln!(
+			"[DEBUG] Output formatting complete: {} bytes",
+			formatted.len()
+		);
+	}
 
 	// Write output
+	if args.verbose >= 1 {
+		let target = if let Some(path) = args.output.as_deref() {
+			format!("{:?}", path)
+		} else {
+			"stdout".to_string()
+		};
+		eprintln!("[INFO] Writing results to: {}", target);
+	}
 	let output_path = args.output.as_deref();
-	write_output(&formatted, output_path).map_err(|e| {
-		format!("Failed to write output: {}", e)
-	})?;
+	write_output(&formatted, output_path).map_err(|e| format!("Failed to write output: {}", e))?;
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Output write complete");
+	}
+
+	// Clean up working directory
+	if args.verbose >= 1 {
+		eprintln!("[INFO] Cleaning up working directory");
+	}
+	working_copy_mgr
+		.cleanup()
+		.map_err(|e| format!("Failed to clean up working directory: {}", e))?;
 
 	if args.verbose >= 1 {
 		eprintln!("[INFO] Ingest operation completed successfully");
@@ -152,7 +601,10 @@ pub async fn status(args: StatusArgs) -> Result<(), String> {
 
 	// Check Ollama if requested
 	if args.check_ollama {
-		let ollama_url = args.ollama_url.clone().unwrap_or_else(|| "http://localhost:11434".to_string());
+		let ollama_url = args
+			.ollama_url
+			.clone()
+			.unwrap_or_else(|| "http://localhost:11435".to_string());
 		if args.verbose >= 2 {
 			eprintln!("[DEBUG] Checking Ollama at: {}", ollama_url);
 		}
@@ -171,7 +623,10 @@ pub async fn status(args: StatusArgs) -> Result<(), String> {
 
 	// Check database if requested
 	if args.check_database {
-		let db_url = args.database.clone().unwrap_or_else(|| "postgresql://dumptruck:dumptruck@localhost/dumptruck".to_string());
+		let db_url = args
+			.database
+			.clone()
+			.unwrap_or_else(|| "postgresql://dumptruck:dumptruck@localhost/dumptruck".to_string());
 		if args.verbose >= 2 {
 			eprintln!("[DEBUG] Checking database at: {}", db_url);
 		}
@@ -231,7 +686,12 @@ pub async fn status(args: StatusArgs) -> Result<(), String> {
 async fn check_ollama(url: &str) -> Result<(), String> {
 	// Simple HTTP health check to Ollama's API endpoint
 	let client = reqwest::Client::new();
-	match client.get(format!("{}/api/tags", url)).timeout(std::time::Duration::from_secs(5)).send().await {
+	match client
+		.get(format!("{}/api/tags", url))
+		.timeout(std::time::Duration::from_secs(5))
+		.send()
+		.await
+	{
 		Ok(response) => {
 			if response.status().is_success() {
 				Ok(())
@@ -278,8 +738,7 @@ async fn check_hibp(_api_key: Option<&str>) -> Result<(), String> {
 
 /// Detect file format from file extension
 fn detect_format_from_path(path: &Path) -> String {
-	path
-		.extension()
+	path.extension()
 		.and_then(|ext| ext.to_str())
 		.map(|ext| ext.to_lowercase())
 		.unwrap_or_else(|| "csv".to_string()) // default to CSV
@@ -332,14 +791,7 @@ async fn process_jobs(
 				.await
 			{
 				// Process the job
-				process_single_job(
-					&queue,
-					&job_id,
-					&filename,
-					worker_id,
-					verbose,
-				)
-				.await;
+				process_single_job(&queue, &job_id, &filename, worker_id, verbose).await;
 			}
 		} else {
 			// No jobs available, sleep briefly
@@ -384,7 +836,10 @@ async fn process_single_job(
 		}
 		Err(e) => {
 			if verbose >= 2 {
-				eprintln!("[DEBUG] Worker {} error updating job {}: {}", worker_id, job_id, e);
+				eprintln!(
+					"[DEBUG] Worker {} error updating job {}: {}",
+					worker_id, job_id, e
+				);
 			}
 			// Try to mark as failed
 			let _ = queue
@@ -405,25 +860,27 @@ fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<(
 	let tx = shutdown_tx.clone();
 
 	tokio::spawn(async move {
-		let mut sigterm = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-			Ok(sig) => sig,
-			Err(e) => {
-				if verbose >= 1 {
-					eprintln!("[WARN] Failed to setup SIGTERM handler: {}", e);
+		let mut sigterm =
+			match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+				Ok(sig) => sig,
+				Err(e) => {
+					if verbose >= 1 {
+						eprintln!("[WARN] Failed to setup SIGTERM handler: {}", e);
+					}
+					return;
 				}
-				return;
-			}
-		};
+			};
 
-		let mut sigint = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
-			Ok(sig) => sig,
-			Err(e) => {
-				if verbose >= 1 {
-					eprintln!("[WARN] Failed to setup SIGINT handler: {}", e);
+		let mut sigint =
+			match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+				Ok(sig) => sig,
+				Err(e) => {
+					if verbose >= 1 {
+						eprintln!("[WARN] Failed to setup SIGINT handler: {}", e);
+					}
+					return;
 				}
-				return;
-			}
-		};
+			};
 
 		tokio::select! {
 			_ = sigterm.recv() => {
@@ -446,10 +903,10 @@ fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<(
 
 /// Handle the server command
 pub async fn server(args: ServerArgs) -> Result<(), String> {
-	use crate::oauth::OAuthProvider;
-	use crate::job_queue::JobQueue;
-	use crate::server::{create_app, AppState};
 	use crate::deploy_manager::ServiceManager;
+	use crate::job_queue::JobQueue;
+	use crate::oauth::OAuthProvider;
+	use crate::server::{AppState, create_app};
 	use std::sync::Arc;
 
 	// Install default crypto provider for rustls
@@ -460,7 +917,10 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	}
 
 	// Load configuration file
-	let config_path = args.config.clone().unwrap_or_else(|| "config.json".to_string());
+	let config_path = args
+		.config
+		.clone()
+		.unwrap_or_else(|| "config.json".to_string());
 	let config = crate::config::Config::from_file(&config_path)
 		.map_err(|e| format!("Failed to load config from {}: {}", config_path, e))?;
 
@@ -469,15 +929,24 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	}
 
 	// Get OAuth settings - CLI args override config file
-	let oauth_client_id = args.oauth_client_id
+	let oauth_client_id = args
+		.oauth_client_id
 		.unwrap_or_else(|| config.oauth.client_id.clone());
-	let oauth_client_secret = args.oauth_client_secret
+	let oauth_client_secret = args
+		.oauth_client_secret
 		.unwrap_or_else(|| config.oauth.client_secret.clone());
-	let oauth_token_endpoint = args.oauth_token_endpoint
+	let oauth_token_endpoint = args
+		.oauth_token_endpoint
 		.unwrap_or_else(|| config.oauth.discovery_url.clone());
 
-	if oauth_client_id.is_empty() || oauth_client_secret.is_empty() || oauth_token_endpoint.is_empty() {
-		return Err("Missing OAuth configuration. Provide via config.json or command-line arguments.".to_string());
+	if oauth_client_id.is_empty()
+		|| oauth_client_secret.is_empty()
+		|| oauth_token_endpoint.is_empty()
+	{
+		return Err(
+			"Missing OAuth configuration. Provide via config.json or command-line arguments."
+				.to_string(),
+		);
 	}
 
 	// Initialize OAuth provider
@@ -510,7 +979,10 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 		.map(|n| n.get())
 		.unwrap_or(4);
 	if args.verbose >= 1 {
-		eprintln!("[INFO] Spawning {} worker threads for parallel job processing", worker_count);
+		eprintln!(
+			"[INFO] Spawning {} worker threads for parallel job processing",
+			worker_count
+		);
 	}
 
 	for worker_id in 0..worker_count {
@@ -557,8 +1029,7 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	let mut shutdown_rx = shutdown_tx.subscribe();
 
 	// Start server with TLS using axum-server
-	let server = axum_server::bind_rustls(addr, tls_config)
-		.serve(app.into_make_service());
+	let server = axum_server::bind_rustls(addr, tls_config).serve(app.into_make_service());
 
 	// Race between server and shutdown signal
 	tokio::select! {
@@ -615,4 +1086,53 @@ mod tests {
 		let path = Path::new("test");
 		assert_eq!(detect_format_from_path(path), "csv");
 	}
+}
+
+/// Handle the generate-tables command
+pub async fn generate_tables(args: crate::cli::GenerateTablesArgs) -> Result<(), String> {
+	let builder = crate::rainbow_table_builder::RainbowTableBuilder::new()
+		.with_output_path(".cache/rainbow_table.json".to_string());
+
+	let builder = if !args.include_ntlm {
+		builder.without_ntlm()
+	} else {
+		builder
+	};
+
+	let builder = if !args.include_sha512 {
+		builder.without_sha512()
+	} else {
+		builder
+	};
+
+	// Generate the table
+	let table = builder
+		.generate()
+		.map_err(|e| format!("Failed to generate rainbow table: {}", e))?;
+
+	// Ensure output directory exists
+	if let Some(output_path) = &args.output {
+		if let Some(parent) = output_path.parent() {
+			std::fs::create_dir_all(parent)
+				.map_err(|e| format!("Failed to create output directory: {}", e))?;
+		}
+
+		let json = serde_json::to_string_pretty(&table)
+			.map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+		std::fs::write(output_path, json)
+			.map_err(|e| format!("Failed to write output file: {}", e))?;
+
+		eprintln!(
+			"[INFO] Rainbow table generated: {} ({} entries)",
+			output_path.display(),
+			table.entries.len()
+		);
+	} else {
+		// Write to stdout
+		let json = serde_json::to_string_pretty(&table)
+			.map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+		println!("{}", json);
+	}
+
+	Ok(())
 }

@@ -297,7 +297,7 @@ impl DiscoveryListener {
 
 		// Task 2: Broadcast presence periodically
 		let self_bcast = self.clone();
-		let mut db_version_rx = db_version_rx; // watch receiver needs to be mutable
+		let db_version_rx = db_version_rx; // watch receiver
 		tokio::spawn(async move {
 			let mut interval = tokio::time::interval(Duration::from_secs(DISCOVERY_INTERVAL_SECS));
 

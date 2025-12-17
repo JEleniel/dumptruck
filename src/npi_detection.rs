@@ -80,9 +80,7 @@ fn is_ipv4(value: &str) -> bool {
 	if parts.len() != 4 {
 		return false;
 	}
-	parts.iter().all(|part| {
-		part.parse::<u8>().is_ok()
-	})
+	parts.iter().all(|part| part.parse::<u8>().is_ok())
 }
 
 /// Detect if a value is a valid IPv6 address
@@ -96,9 +94,9 @@ fn is_ipv6(value: &str) -> bool {
 		return false;
 	}
 	// Check if it looks like hex
-	value.split(':').all(|part| {
-		part.is_empty() || part.chars().all(|c| c.is_ascii_hexdigit())
-	})
+	value
+		.split(':')
+		.all(|part| part.is_empty() || part.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 /// Detect if a value looks like a phone number
@@ -109,8 +107,12 @@ fn is_phone_number(value: &str) -> bool {
 
 	// Between 10-15 digits (international standard)
 	// With optional country code prefix OR formatting characters
-	(digit_count >= 10 && digit_count <= 15) && 
-	(has_country_code || value.contains('-') || value.contains(' ') || value.contains('(') || digit_count == 10)
+	(digit_count >= 10 && digit_count <= 15)
+		&& (has_country_code
+			|| value.contains('-')
+			|| value.contains(' ')
+			|| value.contains('(')
+			|| digit_count == 10)
 }
 
 /// Detect if a value looks like a Social Security Number (US format)
@@ -151,9 +153,10 @@ fn is_national_id(value: &str) -> bool {
 	}
 
 	// Must have formatting (hyphens, spaces, or mixed letters) to distinguish from random numbers
-	let has_formatting = value.contains('-') || value.contains(' ') || 
-		value.chars().filter(|c| c.is_alphabetic()).count() > 0;
-	
+	let has_formatting = value.contains('-')
+		|| value.contains(' ')
+		|| value.chars().filter(|c| c.is_alphabetic()).count() > 0;
+
 	// Either has formatting, or is longer sequence of digits (10+)
 	has_formatting || digit_count >= 10
 }
@@ -205,7 +208,10 @@ fn is_name(value: &str) -> bool {
 		return false;
 	}
 	// Most words should start with uppercase
-	let capitalized = words.iter().filter(|w| w.chars().next().map_or(false, |c| c.is_uppercase())).count();
+	let capitalized = words
+		.iter()
+		.filter(|w| w.chars().next().map_or(false, |c| c.is_uppercase()))
+		.count();
 	capitalized >= words.len() / 2
 }
 
@@ -227,13 +233,38 @@ fn is_mailing_address(value: &str) -> bool {
 
 	// Look for common address indicators
 	let address_keywords = [
-		"street", "st", "avenue", "ave", "boulevard", "blvd",
-		"road", "rd", "lane", "ln", "drive", "dr", "court", "ct",
-		"circle", "way", "trail", "parkway", "apartment", "apt",
-		"suite", "ste", "floor", "zip", "postal", "city", "county"
+		"street",
+		"st",
+		"avenue",
+		"ave",
+		"boulevard",
+		"blvd",
+		"road",
+		"rd",
+		"lane",
+		"ln",
+		"drive",
+		"dr",
+		"court",
+		"ct",
+		"circle",
+		"way",
+		"trail",
+		"parkway",
+		"apartment",
+		"apt",
+		"suite",
+		"ste",
+		"floor",
+		"zip",
+		"postal",
+		"city",
+		"county",
 	];
 
-	address_keywords.iter().any(|keyword| lower.contains(keyword))
+	address_keywords
+		.iter()
+		.any(|keyword| lower.contains(keyword))
 }
 
 /// Detect if a value is an IBAN (International Bank Account Number)
@@ -313,24 +344,21 @@ fn is_crypto_address(value: &str) -> bool {
 		if trimmed.starts_with('1') || trimmed.starts_with('3') || trimmed.starts_with("bc1") {
 			// For bc1 addresses, allow lowercase letters and digits
 			if trimmed.starts_with("bc1") {
-				return trimmed
-					.chars()
-					.skip(3)
-					.all(|c| (c.is_ascii_digit() || (c.is_ascii_lowercase() && c != 'b' && c != 'i' && c != 'o')));
+				return trimmed.chars().skip(3).all(|c| {
+					c.is_ascii_digit()
+						|| (c.is_ascii_lowercase() && c != 'b' && c != 'i' && c != 'o')
+				});
 			}
 			// For legacy addresses, don't allow 0, O, I, l
-			return trimmed
-				.chars()
-				.all(|c| c.is_ascii_alphanumeric() && c != '0' && c != 'O' && c != 'I' && c != 'l');
+			return trimmed.chars().all(|c| {
+				c.is_ascii_alphanumeric() && c != '0' && c != 'O' && c != 'I' && c != 'l'
+			});
 		}
 	}
 
 	// Ethereum addresses: 42 chars, start with 0x, hex only
 	if trimmed.len() == 42 && trimmed.starts_with("0x") {
-		return trimmed
-			.chars()
-			.skip(2)
-			.all(|c| c.is_ascii_hexdigit());
+		return trimmed.chars().skip(2).all(|c| c.is_ascii_hexdigit());
 	}
 
 	// XRP (Ripple) addresses: start with 'r', 25-34 chars, alphanumeric
@@ -347,7 +375,10 @@ fn is_digital_wallet_token(value: &str) -> bool {
 
 	// Stripe account ID: starts with acct_, followed by alphanumeric
 	if trimmed.starts_with("acct_") && trimmed.len() > 10 {
-		return trimmed.chars().skip(5).all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+		return trimmed
+			.chars()
+			.skip(5)
+			.all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
 	}
 
 	// Square account ID: starts with sq0asa, followed by alphanumeric
@@ -357,7 +388,10 @@ fn is_digital_wallet_token(value: &str) -> bool {
 
 	// PayPal merchant ID: uppercase hex, 12-16 chars
 	if trimmed.len() >= 12 && trimmed.len() <= 16 {
-		if trimmed.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
+		if trimmed
+			.chars()
+			.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+		{
 			// Likely PayPal merchant ID if all uppercase alphanumeric
 			return true;
 		}
@@ -462,7 +496,11 @@ pub fn detect_pii(value: &str, column_name: Option<&str>) -> Vec<PiiType> {
 	// Heuristic: if column name suggests name field
 	if let Some(col) = column_name {
 		let col_lower = col.to_lowercase();
-		if (col_lower.contains("name") || col_lower.contains("person") || col_lower.contains("user")) && !detected.contains(&PiiType::Name) {
+		if (col_lower.contains("name")
+			|| col_lower.contains("person")
+			|| col_lower.contains("user"))
+			&& !detected.contains(&PiiType::Name)
+		{
 			detected.push(PiiType::Unknown);
 		}
 	}
@@ -534,42 +572,48 @@ pub fn hash_ssn(value: &str) -> String {
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash an IBAN for duplicate detection
+/// Hash an IBAN for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_iban(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized = value.replace(" ", "").replace("-", "").to_uppercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash a SWIFT code for duplicate detection
+/// Hash a SWIFT code for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_swift_code(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized = value.replace("-", "").to_uppercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash a routing number for duplicate detection
+/// Hash a routing number for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_routing_number(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash a bank account number for duplicate detection
+/// Hash a bank account number for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_bank_account(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash a cryptocurrency address for duplicate detection
+/// Hash a cryptocurrency address for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_crypto_address(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized = value.trim().to_lowercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
-/// Hash a digital wallet token for duplicate detection
+/// Hash a digital wallet token for duplicate detection (Stage 1: Evidence Preservation)
+#[allow(dead_code)]
 fn hash_digital_wallet_token(value: &str) -> String {
 	use crate::hash_utils;
 	let normalized = value.trim().to_lowercase();
@@ -616,7 +660,7 @@ mod tests {
 		assert!(is_name("John Doe"));
 		assert!(is_name("Jane M Smith"));
 		assert!(!is_name("john doe")); // lowercase
-		assert!(!is_name("John123"));  // contains digits
+		assert!(!is_name("John123")); // contains digits
 	}
 
 	#[test]
@@ -668,7 +712,7 @@ mod tests {
 		let hash2 = hash_credit_card("4532015112830366");
 		// Same card, same hash
 		assert_eq!(hash1, hash2);
-		
+
 		// Different cards with same last 4 should have same hash
 		// (this is intentional for privacy - we only hash last 4)
 		let hash3 = hash_credit_card("4111111111110366");
@@ -681,7 +725,7 @@ mod tests {
 		let hash2 = hash_national_id("AB 12 34 56 C");
 		// Different formatting, same hash
 		assert_eq!(hash1, hash2);
-		
+
 		let hash3 = hash_national_id("AB12-34-56-D");
 		// Different ID, different hash
 		assert_ne!(hash1, hash3);
@@ -693,7 +737,7 @@ mod tests {
 		let hash2 = hash_ssn("123456789");
 		// Same SSN, same hash (formatting removed)
 		assert_eq!(hash1, hash2);
-		
+
 		let hash3 = hash_ssn("123-45-6790");
 		// Different SSN, different hash
 		assert_ne!(hash1, hash3);
@@ -763,12 +807,14 @@ mod tests {
 	fn test_crypto_address_detection() {
 		// Valid Bitcoin addresses (26-35 chars, starts with 1, 3, or bc1)
 		assert!(is_crypto_address("1A1z7agoat5GkjM7E6vfj4FPVNwvH8K7p")); // 34 chars
-		
+
 		// Valid Bitcoin P2SH address (starts with 3)
 		assert!(is_crypto_address("3J98t1WpEZ73CNmYviecrnyiWrnqRhWNLy")); // 34 chars
 
 		// Valid Bitcoin segwit address (starts with bc1)
-		assert!(is_crypto_address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4")); // bech32
+		assert!(is_crypto_address(
+			"bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+		)); // bech32
 
 		// Valid Ethereum addresses (42 chars, starts with 0x)
 		assert!(is_crypto_address(
@@ -796,9 +842,7 @@ mod tests {
 
 		// Apple Pay / Google Pay tokens
 		assert!(is_digital_wallet_token("9876543210987654"));
-		assert!(is_digital_wallet_token(
-			"GPAY123456789ABCDEF_TOKEN_123456"
-		));
+		assert!(is_digital_wallet_token("GPAY123456789ABCDEF_TOKEN_123456"));
 
 		// Invalid
 		assert!(!is_digital_wallet_token("short")); // Too short
