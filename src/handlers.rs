@@ -400,10 +400,7 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 				match crate::universal_parser::xml_to_rows(&content) {
 					Ok(rows) => {
 						if rows.is_empty() {
-							let err_msg = format!(
-								"No data rows found in XML file {:?}",
-								file_path
-							);
+							let err_msg = format!("No data rows found in XML file {:?}", file_path);
 							if args.verbose >= 1 {
 								eprintln!("[ERROR] {}", err_msg);
 							}
@@ -412,8 +409,7 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 							// Extract headers if present
 							let headers = if !rows.is_empty() {
 								let first = &rows[0];
-								if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic()))
-								{
+								if first.iter().any(|c| c.chars().any(|ch| ch.is_alphabetic())) {
 									if args.verbose >= 2 {
 										eprintln!("[DEBUG] First row detected as header");
 									}
@@ -438,8 +434,7 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 								if idx == 0 && headers.is_some() {
 									continue;
 								}
-								let detection =
-									detection::detect_row(row, headers.as_deref(), idx);
+								let detection = detection::detect_row(row, headers.as_deref(), idx);
 								detections.push(detection);
 							}
 
@@ -465,10 +460,7 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 							}
 							if args.verbose >= 2 {
 								eprintln!("[DEBUG] Detection results for file:");
-								eprintln!(
-									"[DEBUG]   Unique addresses: {}",
-									stats.unique_addresses
-								);
+								eprintln!("[DEBUG]   Unique addresses: {}", stats.unique_addresses);
 								eprintln!(
 									"[DEBUG]   Hashed credentials: {}",
 									stats.hashed_credentials_detected
@@ -490,10 +482,8 @@ pub async fn ingest(args: IngestArgs) -> Result<(), String> {
 						}
 					}
 					Err(e) => {
-						let err_msg = format!(
-							"Failed to parse XML structure from {:?}: {}",
-							file_path, e
-						);
+						let err_msg =
+							format!("Failed to parse XML structure from {:?}: {}", file_path, e);
 						if args.verbose >= 1 {
 							eprintln!("[ERROR] {}", err_msg);
 						}

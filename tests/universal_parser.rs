@@ -149,9 +149,11 @@ fn test_json_objects_with_varying_keys() {
 	let col_count = rows[0].len();
 	for (idx, row) in rows.iter().enumerate() {
 		assert_eq!(
-			row.len(), col_count,
+			row.len(),
+			col_count,
 			"Row {} should have {} columns",
-			idx, col_count
+			idx,
+			col_count
 		);
 	}
 
@@ -241,16 +243,10 @@ fn test_xml_simple_elements() {
 </users>"#;
 
 	let result = xml_to_rows(xml);
-	assert!(
-		result.is_ok(),
-		"XML parsing should succeed"
-	);
+	assert!(result.is_ok(), "XML parsing should succeed");
 
 	let rows = result.unwrap();
-	assert!(
-		rows.len() > 0,
-		"Should extract at least one row"
-	);
+	assert!(rows.len() > 0, "Should extract at least one row");
 
 	// Should have extracted tag-value pairs
 	let all_values: String = rows
@@ -281,10 +277,7 @@ fn test_xml_multiple_records() {
 	assert!(result.is_ok());
 
 	let rows = result.unwrap();
-	assert!(
-		rows.len() >= 4,
-		"Should extract multiple tag-value pairs"
-	);
+	assert!(rows.len() >= 4, "Should extract multiple tag-value pairs");
 
 	// Verify both records are present
 	let all_values: String = rows
@@ -451,7 +444,10 @@ fn test_json_array_with_many_records() {
 
 	let rows = json_to_rows(&json);
 	// Should handle many records without crashing
-	assert!(rows.len() > 1000, "Should have 1000+ rows (including header)");
+	assert!(
+		rows.len() > 1000,
+		"Should have 1000+ rows (including header)"
+	);
 }
 
 #[test]

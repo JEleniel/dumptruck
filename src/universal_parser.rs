@@ -7,7 +7,7 @@
 //! - Lists → multiple rows (one per item)
 
 #[allow(unused_imports)]
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 #[allow(unused_imports)]
 use std::collections::BTreeMap;
 
