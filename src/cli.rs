@@ -20,6 +20,12 @@ pub enum Commands {
 	Ingest(IngestArgs),
 	/// Show system information and connectivity
 	Status(StatusArgs),
+	/// Display database statistics and analytics
+	Stats(StatsArgs),
+	/// Export database to JSON with deduplication support
+	ExportDb(ExportDbArgs),
+	/// Import database from JSON export with deduplication
+	ImportDb(ImportDbArgs),
 	/// Start HTTP/2 server with TLS 1.3+ and OAuth authentication
 	Server(ServerArgs),
 	/// Generate rainbow table entries with SHA512 and NTLM hashes for weak passwords
@@ -207,6 +213,66 @@ pub struct StatusArgs {
 	/// HIBP API key
 	#[arg(long, value_name = "KEY")]
 	pub hibp_key: Option<String>,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the stats command
+#[derive(Parser, Debug)]
+pub struct StatsArgs {
+	/// Database connection string (default: docker-compose service)
+	#[arg(long, value_name = "CONN_STRING")]
+	pub database: Option<String>,
+
+	/// Show detailed breakdown
+	#[arg(long)]
+	pub detailed: bool,
+
+	/// Output format
+	#[arg(long, value_enum, default_value = "text")]
+	pub format: OutputFormat,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the export-db command
+#[derive(Parser, Debug)]
+pub struct ExportDbArgs {
+	/// Output file for exported database (JSON format)
+	#[arg(short, long, value_name = "FILE")]
+	pub output: PathBuf,
+
+	/// Database connection string (default: docker-compose service)
+	#[arg(long, value_name = "CONN_STRING")]
+	pub database: Option<String>,
+
+	/// Include detailed metadata and audit trails
+	#[arg(long)]
+	pub detailed: bool,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the import-db command
+#[derive(Parser, Debug)]
+pub struct ImportDbArgs {
+	/// Input file from database export (JSON format)
+	#[arg(short, long, value_name = "FILE")]
+	pub input: PathBuf,
+
+	/// Database connection string (default: docker-compose service)
+	#[arg(long, value_name = "CONN_STRING")]
+	pub database: Option<String>,
+
+	/// Validate data integrity before import
+	#[arg(long)]
+	pub validate: bool,
 
 	/// Verbosity level
 	#[arg(short, action = clap::ArgAction::Count)]

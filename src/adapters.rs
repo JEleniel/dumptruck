@@ -9,6 +9,7 @@ pub trait FormatAdapter {
 }
 
 /// A tiny CSV adapter implementing `FormatAdapter`.
+#[derive(Default)]
 pub struct CsvAdapter;
 
 impl CsvAdapter {

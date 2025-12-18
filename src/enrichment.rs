@@ -6,6 +6,7 @@ pub trait EnrichmentPlugin {
 }
 
 /// Example enricher that appends a simple checksum field.
+#[derive(Default)]
 pub struct ChecksumEnricher;
 
 impl ChecksumEnricher {
@@ -29,6 +30,7 @@ impl EnrichmentPlugin for ChecksumEnricher {
 }
 
 /// A simple, deterministic enricher used in examples and integration tests.
+#[derive(Default)]
 pub struct SimpleEnricher;
 
 impl SimpleEnricher {

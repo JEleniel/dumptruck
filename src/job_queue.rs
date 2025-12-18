@@ -151,7 +151,11 @@ impl JobQueue {
 	}
 
 	/// Create and enqueue a new job
-	pub async fn enqueue(&self, filename: String, file_size_bytes: u64) -> Result<String, JobError> {
+	pub async fn enqueue(
+		&self,
+		filename: String,
+		file_size_bytes: u64,
+	) -> Result<String, JobError> {
 		let job = Job::new(filename, file_size_bytes);
 		let job_id = job.id.clone();
 
@@ -167,8 +171,7 @@ impl JobQueue {
 	/// Get job status
 	pub async fn get_job(&self, job_id: &str) -> Result<Job, JobError> {
 		let jobs = self.jobs.read().await;
-		jobs
-			.get(job_id)
+		jobs.get(job_id)
 			.cloned()
 			.ok_or_else(|| JobError::NotFound(job_id.to_string()))
 	}
@@ -181,11 +184,7 @@ impl JobQueue {
 		let mut jobs_vec: Vec<_> = jobs.values().cloned().collect();
 		jobs_vec.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-		let paginated: Vec<_> = jobs_vec
-			.into_iter()
-			.skip(offset)
-			.take(limit)
-			.collect();
+		let paginated: Vec<_> = jobs_vec.into_iter().skip(offset).take(limit).collect();
 
 		(paginated, total)
 	}

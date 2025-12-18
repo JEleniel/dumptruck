@@ -129,6 +129,7 @@ fn extract_email_domain(email: &str) -> Result<String, AliasResolutionError> {
 /// Plus addressing allows users to create infinite email variants:
 /// - john+spam@gmail.com
 /// - john+newsletter@gmail.com
+///
 /// All route to john@gmail.com
 pub fn detect_email_plus_aliases(email: &str) -> Result<Option<AliasLink>, AliasResolutionError> {
 	let local = extract_email_local(email)?;

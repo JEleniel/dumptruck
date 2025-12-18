@@ -1,5 +1,6 @@
 use std::io;
 
+use crate::config::Config;
 use tokio::{
 	process::Command,
 	time::{Duration, Instant, sleep},
@@ -13,6 +14,7 @@ const DB_PORT: u16 = 5432;
 const OLLAMA_PORT: u16 = 11435;
 
 /// Tracks which services were started by the application
+#[derive(Default)]
 pub struct ServiceManager {
 	started_containers: Vec<String>,
 }
@@ -25,9 +27,18 @@ impl ServiceManager {
 		}
 	}
 
-	/// Check and start required services (PostgreSQL and Ollama)
-	pub async fn ensure_services_running(&mut self, verbose: u32) -> Result<(), String> {
-		// Check and start PostgreSQL
+	/// Check and start required services based on configuration
+	///
+	/// Always starts PostgreSQL. Ollama only starts if enabled in config.
+	pub async fn ensure_services_running(
+		&mut self,
+		verbose: u32,
+		config: Option<&Config>,
+	) -> Result<(), String> {
+		// Determine if Ollama should be started
+		let start_ollama = config.map(|c| c.ollama_enabled()).unwrap_or(false);
+
+		// Check and start PostgreSQL (always required)
 		if !is_service_running("localhost", DB_PORT, verbose).await {
 			if verbose >= 1 {
 				eprintln!("[INFO] PostgreSQL not available, starting PostgreSQL...");
@@ -39,24 +50,28 @@ impl ServiceManager {
 			eprintln!("[DEBUG] PostgreSQL is already running");
 		}
 
-		// Check and start Ollama
-		if !is_service_running("localhost", OLLAMA_PORT, verbose).await {
-			if verbose >= 1 {
-				eprintln!("[INFO] Ollama not available, starting Ollama...");
+		// Check and start Ollama only if enabled
+		if start_ollama {
+			if !is_service_running("localhost", OLLAMA_PORT, verbose).await {
+				if verbose >= 1 {
+					eprintln!("[INFO] Ollama not available, starting Ollama...");
+				}
+				self.start_service("docker/ollama", "ollama", verbose)
+					.await?;
+				self.started_containers.push(OLLAMA_CONTAINER.to_string());
+			} else if verbose >= 2 {
+				eprintln!("[DEBUG] Ollama is already running");
 			}
-			self.start_service("docker/ollama", "ollama", verbose)
-				.await?;
-			self.started_containers.push(OLLAMA_CONTAINER.to_string());
 		} else if verbose >= 2 {
-			eprintln!("[DEBUG] Ollama is already running");
+			eprintln!("[DEBUG] Ollama is disabled in configuration, skipping startup");
 		}
 
-		// Wait for both services to be ready
+		// Wait for services to be ready
 		if !self.started_containers.is_empty() {
 			if verbose >= 2 {
 				eprintln!("[DEBUG] Waiting for services to be ready...");
 			}
-			self.wait_for_services_ready(verbose).await?;
+			self.wait_for_services_ready(verbose, start_ollama).await?;
 		}
 
 		Ok(())
@@ -107,13 +122,22 @@ impl ServiceManager {
 	}
 
 	/// Wait for all services to be ready
-	async fn wait_for_services_ready(&self, verbose: u32) -> Result<(), String> {
+	/// Wait for services to be ready based on which services are being started
+	async fn wait_for_services_ready(
+		&self,
+		verbose: u32,
+		check_ollama: bool,
+	) -> Result<(), String> {
 		let deadline = Instant::now() + STARTUP_TIMEOUT;
 		let mut attempt = 0;
 
 		loop {
 			let pg_ready = Self::is_service_available("localhost", DB_PORT).await;
-			let ollama_ready = Self::is_service_available("localhost", OLLAMA_PORT).await;
+			let ollama_ready = if check_ollama {
+				Self::is_service_available("localhost", OLLAMA_PORT).await
+			} else {
+				true // Skip Ollama check if not enabled
+			};
 
 			if pg_ready && ollama_ready {
 				if verbose >= 1 {
@@ -124,7 +148,11 @@ impl ServiceManager {
 
 			if Instant::now() > deadline {
 				let pg_status = if pg_ready { "ready" } else { "not ready" };
-				let ollama_status = if ollama_ready { "ready" } else { "not ready" };
+				let ollama_status = if check_ollama {
+					if ollama_ready { "ready" } else { "not ready" }
+				} else {
+					"skipped"
+				};
 				return Err(format!(
 					"Services failed to start within timeout. PostgreSQL: {}, Ollama: {}",
 					pg_status, ollama_status
@@ -134,14 +162,22 @@ impl ServiceManager {
 			attempt += 1;
 			if verbose >= 1 {
 				let pg_status = if pg_ready { "ready" } else { "waiting" };
-				let ollama_status = if ollama_ready { "ready" } else { "waiting" };
+				let ollama_status = if check_ollama {
+					if ollama_ready { "ready" } else { "waiting" }
+				} else {
+					"disabled"
+				};
 				eprintln!(
 					"[INFO] Waiting for services... (attempt {}). PostgreSQL: {}, Ollama: {}",
 					attempt, pg_status, ollama_status
 				);
 			} else if verbose >= 2 {
 				let pg_status = if pg_ready { "ready" } else { "not ready" };
-				let ollama_status = if ollama_ready { "ready" } else { "not ready" };
+				let ollama_status = if check_ollama {
+					if ollama_ready { "ready" } else { "not ready" }
+				} else {
+					"disabled"
+				};
 				eprintln!(
 					"[DEBUG] Service status - PostgreSQL: {}, Ollama: {}",
 					pg_status, ollama_status

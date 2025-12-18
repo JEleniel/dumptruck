@@ -1078,7 +1078,50 @@ mod tests {
 	}
 }
 
-/// Handle the generate-tables command
+/// Handle the stats command
+pub async fn stats(args: crate::cli::StatsArgs) -> Result<(), String> {
+	if args.verbose >= 1 {
+		eprintln!("[INFO] Retrieving database statistics");
+	}
+
+	// Determine database connection string
+	let db_conn = if let Some(db_str) = args.database {
+		db_str
+	} else {
+		// Default PostgreSQL connection string for docker-compose
+		"postgresql://dumptruck:dumptruck@localhost:5432/dumptruck".to_string()
+	};
+
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Connecting to database: {}", db_conn);
+	}
+
+	// Retrieve statistics from database
+	let stats = crate::db_stats::DatabaseStats::from_postgres(&db_conn)
+		.map_err(|e| format!("Failed to retrieve database statistics: {}", e))?;
+
+	// Format and output results
+	match args.format {
+		crate::cli::OutputFormat::Json => {
+			let json = serde_json::to_string_pretty(&stats)
+				.map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+			println!("{}", json);
+		}
+		crate::cli::OutputFormat::Text => {
+			let text = stats.format_text(args.detailed);
+			print!("{}", text);
+		}
+		_ => {
+			return Err(format!(
+				"Output format {:?} not supported for stats command",
+				args.format
+			));
+		}
+	}
+
+	Ok(())
+}
+
 pub async fn generate_tables(args: crate::cli::GenerateTablesArgs) -> Result<(), String> {
 	let builder = crate::rainbow_table_builder::RainbowTableBuilder::new()
 		.with_output_path(".cache/rainbow_table.json".to_string());
@@ -1122,6 +1165,138 @@ pub async fn generate_tables(args: crate::cli::GenerateTablesArgs) -> Result<(),
 		let json = serde_json::to_string_pretty(&table)
 			.map_err(|e| format!("Failed to serialize JSON: {}", e))?;
 		println!("{}", json);
+	}
+
+	Ok(())
+}
+
+/// Export the database to a JSON file with deduplication support.
+pub async fn export_db(args: crate::cli::ExportDbArgs) -> Result<(), String> {
+	use postgres::NoTls;
+
+	if args.verbose >= 1 {
+		eprintln!("[INFO] Exporting database to {}", args.output.display());
+	}
+
+	// Connect to database
+	let conn_str = args
+		.database
+		.unwrap_or_else(|| "postgresql://dumptruck:dumpturck@dumptruck-db/dumptruck".to_string());
+
+	let mut client = postgres::Client::connect(&conn_str, NoTls)
+		.map_err(|e| format!("Failed to connect to database: {}", e))?;
+
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Connected to database");
+	}
+
+	// Export database
+	let export = crate::db_export::export_database(&mut client)
+		.map_err(|e| format!("Failed to export database: {}", e))?;
+
+	if args.verbose >= 1 {
+		eprintln!(
+			"[INFO] Exported {} canonical addresses, {} file metadata records",
+			export.canonical_addresses.len(),
+			export.file_metadata.len()
+		);
+	}
+
+	// Ensure output directory exists
+	if let Some(parent) = args.output.parent() {
+		std::fs::create_dir_all(parent)
+			.map_err(|e| format!("Failed to create output directory: {}", e))?;
+	}
+
+	// Write to file
+	let json = serde_json::to_string_pretty(&export)
+		.map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+	std::fs::write(&args.output, json)
+		.map_err(|e| format!("Failed to write output file: {}", e))?;
+
+	if args.verbose >= 1 {
+		eprintln!(
+			"[INFO] Database exported successfully to {}",
+			args.output.display()
+		);
+	}
+
+	Ok(())
+}
+
+/// Import a database from a JSON export file with deduplication.
+pub async fn import_db(args: crate::cli::ImportDbArgs) -> Result<(), String> {
+	use postgres::NoTls;
+
+	if args.verbose >= 1 {
+		eprintln!("[INFO] Importing database from {}", args.input.display());
+	}
+
+	// Read JSON file
+	let json_content = std::fs::read_to_string(&args.input)
+		.map_err(|e| format!("Failed to read input file: {}", e))?;
+
+	// Parse JSON
+	let export: crate::db_export::DatabaseExport =
+		serde_json::from_str(&json_content).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+	if args.verbose >= 2 {
+		eprintln!(
+			"[DEBUG] Parsed export: {} canonical addresses, {} file metadata",
+			export.canonical_addresses.len(),
+			export.file_metadata.len()
+		);
+	}
+
+	// Validate if requested
+	if args.validate {
+		if args.verbose >= 1 {
+			eprintln!("[INFO] Validating export data...");
+		}
+
+		if export.canonical_addresses.is_empty() {
+			return Err("Export contains no canonical addresses".to_string());
+		}
+
+		if args.verbose >= 2 {
+			eprintln!("[DEBUG] Validation passed");
+		}
+	}
+
+	// Connect to database
+	let conn_str = args
+		.database
+		.unwrap_or_else(|| "postgresql://dumptruck:dumpturck@dumptruck-db/dumptruck".to_string());
+
+	let mut client = postgres::Client::connect(&conn_str, NoTls)
+		.map_err(|e| format!("Failed to connect to database: {}", e))?;
+
+	if args.verbose >= 2 {
+		eprintln!("[DEBUG] Connected to database");
+	}
+
+	// Import with deduplication
+	let stats = crate::db_import::import_database(&mut client, &export)
+		.map_err(|e| format!("Failed to import database: {}", e))?;
+
+	if args.verbose >= 1 {
+		eprintln!(
+			"[INFO] Import complete: {} records imported, {} skipped (duplicates)",
+			stats.total_imported(),
+			stats.total_skipped()
+		);
+		eprintln!(
+			"  - Canonical addresses: {} imported, {} skipped",
+			stats.canonical_addresses_imported, stats.canonical_addresses_skipped
+		);
+		eprintln!(
+			"  - File metadata: {} imported, {} skipped",
+			stats.file_metadata_imported, stats.file_metadata_skipped
+		);
+		eprintln!(
+			"  - Chain of custody: {} imported, {} skipped",
+			stats.chain_of_custody_imported, stats.chain_of_custody_skipped
+		);
 	}
 
 	Ok(())

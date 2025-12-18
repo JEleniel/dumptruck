@@ -47,7 +47,9 @@ fn load_certificates(cert_path: &Path) -> Result<Vec<CertificateDer<'static>>, T
 
 	let certs: Vec<_> = rustls_pemfile::certs(&mut std::io::Cursor::new(&cert_data))
 		.collect::<Result<_, _>>()
-		.map_err(|_| TlsError::CertificateParseError("Failed to parse PEM certificates".to_string()))?;
+		.map_err(|_| {
+			TlsError::CertificateParseError("Failed to parse PEM certificates".to_string())
+		})?;
 
 	Ok(certs)
 }
@@ -94,10 +96,7 @@ fn load_private_key(key_path: &Path) -> Result<PrivateKeyDer<'static>, TlsError>
 }
 
 /// Create TLS 1.3+ server configuration
-pub fn create_tls_server_config(
-	cert_path: &str,
-	key_path: &str,
-) -> Result<ServerConfig, TlsError> {
+pub fn create_tls_server_config(cert_path: &str, key_path: &str) -> Result<ServerConfig, TlsError> {
 	let cert_path = Path::new(cert_path);
 	let key_path = Path::new(key_path);
 
@@ -131,10 +130,7 @@ mod tests {
 	#[test]
 	fn test_tls_error_display() {
 		let error = TlsError::SelfSignedCertificateRejected;
-		assert_eq!(
-			error.to_string(),
-			"Self-signed certificates not accepted"
-		);
+		assert_eq!(error.to_string(), "Self-signed certificates not accepted");
 	}
 
 	#[test]
@@ -143,4 +139,3 @@ mod tests {
 		assert_eq!(error.to_string(), "Failed to create TLS config: Test error");
 	}
 }
-

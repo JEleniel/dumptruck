@@ -154,9 +154,7 @@ impl StreamingJsonLinesParser {
 						}
 						serde_json::Value::Array(arr) => {
 							// Convert JSON array to string array
-							arr.iter()
-								.map(|v| v.to_string())
-								.collect()
+							arr.iter().map(|v| v.to_string()).collect()
 						}
 						_ => {
 							self.stats.rows_failed += 1;
@@ -295,16 +293,11 @@ impl StreamingJsonArrayParser {
 		match serde_json::from_str::<serde_json::Value>(&self.buffer) {
 			Ok(value) => {
 				let fields = match value {
-					serde_json::Value::Object(obj) => {
-						obj.iter()
-							.map(|(k, v)| format!("{}:{}", k, v.to_string()))
-							.collect()
-					}
-					serde_json::Value::Array(arr) => {
-						arr.iter()
-							.map(|v| v.to_string())
-							.collect()
-					}
+					serde_json::Value::Object(obj) => obj
+						.iter()
+						.map(|(k, v)| format!("{}:{}", k, v.to_string()))
+						.collect(),
+					serde_json::Value::Array(arr) => arr.iter().map(|v| v.to_string()).collect(),
 					_ => vec![value.to_string()],
 				};
 				self.buffer.clear();
@@ -314,7 +307,9 @@ impl StreamingJsonArrayParser {
 			Err(e) => {
 				self.buffer.clear();
 				self.stats.rows_failed += 1;
-				self.stats.warnings.push(format!("Failed to parse JSON object: {}", e));
+				self.stats
+					.warnings
+					.push(format!("Failed to parse JSON object: {}", e));
 				// Return None to continue parsing
 				None
 			}

@@ -6,7 +6,17 @@
 		"discovery_url": "https://your-oauth-provider/.well-known/openid-configuration"
 	},
 	"api_keys": {
-		"hibp": "YOUR_HIBP_API_KEY"
+		"hibp": {
+			"enabled": false,
+			"api_key": "YOUR_HIBP_API_KEY"
+		}
+	},
+	"services": {
+		"ollama": {
+			"enabled": false,
+			"host": "localhost",
+			"port": 11435
+		}
 	},
 	"email_suffix_substitutions": {
 		"bofa.com": ["bankofamerica.com", "ml.com"],

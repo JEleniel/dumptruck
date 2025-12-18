@@ -130,10 +130,7 @@ pub struct SyncResponse {
 }
 
 impl SyncResponse {
-	pub fn new(
-		responder_id: String,
-		responder_db_version: String,
-	) -> Self {
+	pub fn new(responder_id: String, responder_db_version: String) -> Self {
 		Self {
 			responder_id,
 			responder_db_version,
@@ -205,9 +202,7 @@ impl SyncManager {
 	pub fn new(instance_id: String) -> Self {
 		Self {
 			instance_id,
-			sync_states: Arc::new(tokio::sync::RwLock::new(
-				std::collections::HashMap::new(),
-			)),
+			sync_states: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
 		}
 	}
 
@@ -224,12 +219,7 @@ impl SyncManager {
 	}
 
 	/// Update sync state after successful sync
-	pub async fn update_sync_state(
-		&self,
-		peer_id: String,
-		db_version: String,
-		item_count: usize,
-	) {
+	pub async fn update_sync_state(&self, peer_id: String, db_version: String, item_count: usize) {
 		let mut states = self.sync_states.write().await;
 		if let Some(state) = states.get_mut(&peer_id) {
 			state.last_synced_db_version = db_version;
@@ -318,7 +308,8 @@ mod tests {
 	fn test_sync_response_creation() {
 		let mut response = SyncResponse::new("instance-2".to_string(), "version-def".to_string());
 		response.new_addresses.push("hash1".to_string());
-		response.new_canonical_mappings
+		response
+			.new_canonical_mappings
 			.push(("variant1".to_string(), "canonical1".to_string()));
 
 		assert_eq!(response.responder_id, "instance-2");
@@ -354,7 +345,9 @@ mod tests {
 	#[tokio::test]
 	async fn test_sync_manager_register_and_get() {
 		let manager = SyncManager::new("instance-1".to_string());
-		manager.register_peer("peer-1".to_string(), "pull".to_string()).await;
+		manager
+			.register_peer("peer-1".to_string(), "pull".to_string())
+			.await;
 
 		let state = manager.get_sync_state("peer-1").await;
 		assert!(state.is_some());
@@ -364,14 +357,12 @@ mod tests {
 	#[tokio::test]
 	async fn test_sync_manager_update_state() {
 		let manager = SyncManager::new("instance-1".to_string());
-		manager.register_peer("peer-1".to_string(), "pull".to_string()).await;
+		manager
+			.register_peer("peer-1".to_string(), "pull".to_string())
+			.await;
 
 		manager
-			.update_sync_state(
-				"peer-1".to_string(),
-				"version-xyz".to_string(),
-				42,
-			)
+			.update_sync_state("peer-1".to_string(), "version-xyz".to_string(), 42)
 			.await;
 
 		let state = manager.get_sync_state("peer-1").await.unwrap();
@@ -382,7 +373,9 @@ mod tests {
 	#[tokio::test]
 	async fn test_sync_manager_stale_detection() {
 		let manager = SyncManager::new("instance-1".to_string());
-		manager.register_peer("peer-1".to_string(), "pull".to_string()).await;
+		manager
+			.register_peer("peer-1".to_string(), "pull".to_string())
+			.await;
 
 		// Immediately after registration, should not be stale
 		let state = manager.get_sync_state("peer-1").await.unwrap();
@@ -391,8 +384,7 @@ mod tests {
 
 	#[test]
 	fn test_sync_response_serialization() {
-		let mut response =
-			SyncResponse::new("instance-2".to_string(), "version-def".to_string());
+		let mut response = SyncResponse::new("instance-2".to_string(), "version-def".to_string());
 		response.new_addresses.push("hash1".to_string());
 
 		let json = serde_json::to_string(&response).unwrap();

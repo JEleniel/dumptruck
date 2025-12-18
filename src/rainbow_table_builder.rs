@@ -292,10 +292,8 @@ mod tests {
 			plaintext: "password".to_string(),
 			md5: "5f4dcc3b5aa765d61d8327deb882cf99".to_string(),
 			sha1: "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8".to_string(),
-			sha256: "5e884898da28047151d0e56f8dc62927051d5e07d5d91ff5e95b1fee3e06a717"
-				.to_string(),
-			sha512: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
-				.to_string(),
+			sha256: "5e884898da28047151d0e56f8dc62927051d5e07d5d91ff5e95b1fee3e06a717".to_string(),
+			sha512: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3".to_string(),
 			ntlm: "8846F7EAEE8FB117AD06BDD830B7586C".to_string(),
 		};
 

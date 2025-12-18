@@ -8,12 +8,12 @@
 //!
 //! Note: Currently uses SHA-256 for hashing. BLAKE3 support to be added.
 
+use sha2::Digest;
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-use sha2::Digest;
 
 /// File evidence metadata for chain of custody and deduplication
 #[derive(Debug, Clone)]
@@ -151,14 +151,17 @@ mod tests {
 		temp_file.flush().expect("Failed to flush temp file");
 
 		let path = temp_file.path();
-		let evidence =
-			FileEvidence::create(path, Some(vec!["alternate.csv".to_string()]))
-				.expect("Failed to create evidence");
+		let evidence = FileEvidence::create(path, Some(vec!["alternate.csv".to_string()]))
+			.expect("Failed to create evidence");
 
 		assert!(!evidence.file_id.is_empty());
 		assert!(!evidence.sha256_hash.is_empty());
 		assert_eq!(evidence.file_size, 22);
-		assert!(evidence.alternate_names.contains(&"alternate.csv".to_string()));
+		assert!(
+			evidence
+				.alternate_names
+				.contains(&"alternate.csv".to_string())
+		);
 		assert!(evidence.created_at > 0);
 	}
 

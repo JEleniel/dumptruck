@@ -1,76 +1,131 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"title": "Dumptruck Configuration Schema",
-	"description": "Configuration schema for Dumptruck bulk data analysis tool",
+	"title": "Dumptruck Configuration",
+	"description": "Configuration schema for Dumptruck bulk data analysis system",
 	"type": "object",
-	"required": ["api_keys", "email_suffix_substitutions"],
 	"properties": {
 		"$schema": {
 			"type": "string",
-			"title": "Schema Reference",
-			"description": "Reference to the JSON schema file"
+			"description": "Path to this schema file"
 		},
 		"oauth": {
 			"type": "object",
-			"title": "OAuth 2.0 Configuration",
-			"description": "OAuth 2.0/OIDC authentication settings for API endpoint protection",
+			"description": "OAuth 2.0/OIDC configuration (optional, all fields default to empty)",
 			"properties": {
 				"client_id": {
 					"type": "string",
-					"title": "OAuth Client ID",
-					"description": "Client identifier registered with the OAuth provider"
+					"description": "OAuth client ID"
 				},
 				"client_secret": {
 					"type": "string",
-					"title": "OAuth Client Secret",
-					"description": "Client secret for the OAuth provider (keep secure)"
+					"description": "OAuth client secret"
 				},
 				"discovery_url": {
 					"type": "string",
-					"title": "OIDC Discovery URL",
-					"description": "URL to the OAuth provider's .well-known/openid-configuration endpoint",
-					"format": "uri"
+					"description": "OIDC discovery URL for automatic configuration"
 				}
 			},
-			"required": ["client_id", "client_secret", "discovery_url"],
 			"additionalProperties": false
 		},
 		"api_keys": {
 			"type": "object",
-			"title": "API Keys",
-			"description": "External API credentials for enrichment services",
-			"required": ["hibp"],
+			"description": "Configuration for external API integrations",
 			"properties": {
 				"hibp": {
-					"type": "string",
-					"title": "Have I Been Pwned API Key",
-					"description": "API key for HIBP v3 API (32-character hex string). Get from https://haveibeenpwned.com/API/v3/",
-					"minLength": 1
+					"type": "object",
+					"description": "Have I Been Pwned (HIBP) API configuration",
+					"properties": {
+						"enabled": {
+							"type": "boolean",
+							"description": "Enable HIBP enrichment (default: false)",
+							"default": false
+						},
+						"api_key": {
+							"type": "string",
+							"description": "HIBP API key (32-character hexadecimal string, required if enabled=true)"
+						}
+					},
+					"additionalProperties": false
+				}
+			},
+			"additionalProperties": false
+		},
+		"services": {
+			"type": "object",
+			"description": "Configuration for optional services",
+			"properties": {
+				"ollama": {
+					"type": "object",
+					"description": "Ollama service configuration for vector similarity search",
+					"properties": {
+						"enabled": {
+							"type": "boolean",
+							"description": "Enable Ollama service (default: false)",
+							"default": false
+						},
+						"host": {
+							"type": "string",
+							"description": "Ollama service host (default: localhost)",
+							"default": "localhost"
+						},
+						"port": {
+							"type": "integer",
+							"description": "Ollama service port (default: 11435)",
+							"default": 11435,
+							"minimum": 1,
+							"maximum": 65535
+						}
+					},
+					"additionalProperties": false
 				}
 			},
 			"additionalProperties": false
 		},
 		"email_suffix_substitutions": {
 			"type": "object",
-			"title": "Email Suffix Substitutions",
-			"description": "Map canonical email domains to their alternate forms for normalization and deduplication",
-			"additionalProperties": {
-				"type": "array",
-				"title": "Alternate domains",
-				"description": "Array of alternate domain names that should map to the canonical domain",
-				"items": {
-					"type": "string",
-					"pattern": "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-					"description": "Valid domain name"
-				},
-				"minItems": 0
-			},
+			"description": "Email domain alias mappings for canonicalization",
 			"examples": [
 				{
 					"gmail.com": ["googlemail.com"],
-					"microsoft.com": ["outlook.com", "hotmail.com"]
+					"microsoft.com": ["outlook.com", "hotmail.com", "live.com"]
 				}
-			]
+			],
+			"additionalProperties": {
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			}
+		},
+		"custom_passwords": {
+			"type": "object",
+			"description": "Custom plaintext passwords to check during detection",
+			"properties": {
+				"passwords": {
+					"type": "array",
+					"description": "List of plaintext passwords that will be hashed and checked",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"additionalProperties": false
+		},
+		"working_directory": {
+			"type": "object",
+			"description": "Configuration for isolated file processing and temporary storage",
+			"properties": {
+				"path": {
+					"type": ["string", "null"],
+					"description": "Absolute path to working directory (defaults to system temp if not specified)"
+				},
+				"verify_noexec": {
+					"type": "boolean",
+					"description": "Verify working directory is mounted with noexec flag (default: true)",
+					"default": true
+				}
+			},
+			"additionalProperties": false
 		}
 	},
 	"additionalProperties": false

@@ -32,15 +32,27 @@ pub enum ConfigError {
 	ValidationError(String),
 }
 
+/// HIBP API configuration.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct HibpConfig {
+	/// Whether HIBP enrichment is enabled
+	#[serde(default)]
+	pub enabled: bool,
+
+	/// HIBP API key (32-character hexadecimal string)
+	#[serde(default)]
+	pub api_key: String,
+}
+
 /// API keys for external services.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ApiKeys {
 	#[serde(default)]
-	pub hibp: String,
+	pub hibp: HibpConfig,
 }
 
 /// OAuth 2.0/OIDC configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OAuth {
 	#[serde(default)]
 	pub client_id: String,
@@ -52,19 +64,9 @@ pub struct OAuth {
 	pub discovery_url: String,
 }
 
-impl Default for OAuth {
-	fn default() -> Self {
-		Self {
-			client_id: String::new(),
-			client_secret: String::new(),
-			discovery_url: String::new(),
-		}
-	}
-}
-
 /// Email suffix substitution rules.
 /// The key is the canonical suffix, and the value is a list of alternate suffixes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EmailSuffixSubstitutions {
 	#[serde(flatten)]
 	pub rules: HashMap<String, Vec<String>>,
@@ -72,19 +74,11 @@ pub struct EmailSuffixSubstitutions {
 
 /// Custom password configuration.
 /// Allows adding plaintext passwords that will be hashed and used for detection.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CustomPasswords {
 	/// List of plaintext passwords to check
 	#[serde(default)]
 	pub passwords: Vec<String>,
-}
-
-impl Default for CustomPasswords {
-	fn default() -> Self {
-		Self {
-			passwords: Vec::new(),
-		}
-	}
 }
 
 /// Working directory configuration
@@ -113,14 +107,59 @@ impl Default for WorkingDirectoryConfig {
 	}
 }
 
-/// Main configuration structure.
+/// Ollama service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaConfig {
+	/// Whether Ollama service is enabled for vector similarity search
+	#[serde(default)]
+	pub enabled: bool,
+
+	/// Ollama service host
+	#[serde(default = "default_ollama_host")]
+	pub host: String,
+
+	/// Ollama service port
+	#[serde(default = "default_ollama_port")]
+	pub port: u16,
+}
+
+fn default_ollama_host() -> String {
+	"localhost".to_string()
+}
+
+fn default_ollama_port() -> u16 {
+	11435
+}
+
+impl Default for OllamaConfig {
+	fn default() -> Self {
+		Self {
+			enabled: false,
+			host: default_ollama_host(),
+			port: default_ollama_port(),
+		}
+	}
+}
+
+/// Services configuration
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ServicesConfig {
+	/// Ollama service configuration
+	#[serde(default)]
+	pub ollama: OllamaConfig,
+}
+
+/// Main configuration structure.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
 	#[serde(default)]
 	pub oauth: OAuth,
 
 	#[serde(default)]
 	pub api_keys: ApiKeys,
+
+	#[serde(default)]
+	pub services: ServicesConfig,
 
 	#[serde(default)]
 	pub email_suffix_substitutions: EmailSuffixSubstitutions,
@@ -131,34 +170,6 @@ pub struct Config {
 	/// Working directory configuration
 	#[serde(default)]
 	pub working_directory: WorkingDirectoryConfig,
-}
-
-impl Default for ApiKeys {
-	fn default() -> Self {
-		Self {
-			hibp: String::new(),
-		}
-	}
-}
-
-impl Default for EmailSuffixSubstitutions {
-	fn default() -> Self {
-		Self {
-			rules: HashMap::new(),
-		}
-	}
-}
-
-impl Default for Config {
-	fn default() -> Self {
-		Self {
-			oauth: OAuth::default(),
-			api_keys: ApiKeys::default(),
-			email_suffix_substitutions: EmailSuffixSubstitutions::default(),
-			custom_passwords: CustomPasswords::default(),
-			working_directory: WorkingDirectoryConfig::default(),
-		}
-	}
 }
 
 impl Config {
@@ -187,7 +198,7 @@ impl Config {
 
 		// Override HIBP API key from environment if present
 		if let Ok(hibp_key) = std::env::var("DUMPTRUCK_HIBP_API_KEY") {
-			config.api_keys.hibp = hibp_key;
+			config.api_keys.hibp.api_key = hibp_key;
 		}
 
 		Ok(config)
@@ -197,7 +208,25 @@ impl Config {
 	///
 	/// Returns empty string if not configured.
 	pub fn hibp_api_key(&self) -> &str {
-		&self.api_keys.hibp
+		&self.api_keys.hibp.api_key
+	}
+
+	/// Check if HIBP is enabled.
+	pub fn hibp_enabled(&self) -> bool {
+		self.api_keys.hibp.enabled
+	}
+
+	/// Check if Ollama is enabled.
+	pub fn ollama_enabled(&self) -> bool {
+		self.services.ollama.enabled
+	}
+
+	/// Get Ollama endpoint URL.
+	pub fn ollama_endpoint(&self) -> String {
+		format!(
+			"http://{}:{}",
+			self.services.ollama.host, self.services.ollama.port
+		)
 	}
 
 	/// Check if an email suffix has registered alternates.
@@ -271,16 +300,21 @@ impl Config {
 	/// Validate configuration against schema constraints.
 	///
 	/// Validates:
-	/// - HIBP API key is 32 hexadecimal characters
+	/// - HIBP API key is 32 hexadecimal characters (if enabled)
 	/// - Email domains are valid format
 	///
 	/// # Returns
 	/// Ok if valid, ConfigError::ValidationError if invalid
 	pub fn validate(&self) -> Result<(), ConfigError> {
-		// Validate HIBP API key format (32-character hex string)
-		if !self.api_keys.hibp.is_empty()
-			&& (self.api_keys.hibp.len() != 32
-				|| !self.api_keys.hibp.chars().all(|c| c.is_ascii_hexdigit()))
+		// Validate HIBP API key format (32-character hex string) only if it's not empty
+		if !self.api_keys.hibp.api_key.is_empty()
+			&& (self.api_keys.hibp.api_key.len() != 32
+				|| !self
+					.api_keys
+					.hibp
+					.api_key
+					.chars()
+					.all(|c| c.is_ascii_hexdigit()))
 		{
 			return Err(ConfigError::ValidationError(
 				"hibp key must be 32 hexadecimal characters".to_string(),
@@ -365,21 +399,21 @@ mod tests {
 	#[test]
 	fn test_validate_valid_hibp_key() {
 		let mut config = Config::default();
-		config.api_keys.hibp = "abcdef0123456789abcdef0123456789".to_string();
+		config.api_keys.hibp.api_key = "abcdef0123456789abcdef0123456789".to_string();
 		assert!(config.validate().is_ok());
 	}
 
 	#[test]
 	fn test_validate_invalid_hibp_key_format() {
 		let mut config = Config::default();
-		config.api_keys.hibp = "invalid-key".to_string();
+		config.api_keys.hibp.api_key = "invalid-key".to_string();
 		assert!(config.validate().is_err());
 	}
 
 	#[test]
 	fn test_validate_invalid_hibp_key_length() {
 		let mut config = Config::default();
-		config.api_keys.hibp = "abcdef0123456789abcdef01234567".to_string();
+		config.api_keys.hibp.api_key = "abcdef0123456789abcdef01234567".to_string();
 		assert!(config.validate().is_err());
 	}
 
