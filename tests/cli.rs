@@ -29,4 +29,3 @@ fn ingest_command_with_valid_file() {
 		.success()
 		.stdout(predicate::str::contains("Dumptruck Analysis Results"));
 }
-

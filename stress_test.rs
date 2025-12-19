@@ -88,11 +88,10 @@ struct Config {
 
 impl Config {
 	fn from_env() -> Self {
-		let server_url = std::env::var("STRESS_TEST_URL").unwrap_or_else(|_| {
-			"https://localhost:8443".to_string()
-		});
-		let oauth_token = std::env::var("STRESS_TEST_TOKEN")
-			.unwrap_or_else(|_| "test-token-12345".to_string());
+		let server_url = std::env::var("STRESS_TEST_URL")
+			.unwrap_or_else(|_| "https://localhost:8443".to_string());
+		let oauth_token =
+			std::env::var("STRESS_TEST_TOKEN").unwrap_or_else(|_| "test-token-12345".to_string());
 		let concurrent_requests = std::env::var("STRESS_TEST_CONCURRENT")
 			.ok()
 			.and_then(|s| s.parse().ok())
@@ -269,14 +268,8 @@ async fn run_stress_test(config: Config) -> Result<(), Box<dyn std::error::Error
 			let start = Instant::now();
 			let fixture_idx = request_num % fixture_count;
 
-			match send_ingest_request(
-				&client,
-				&server_url,
-				&oauth_token,
-				&filename,
-				file_size,
-			)
-			.await
+			match send_ingest_request(&client, &server_url, &oauth_token, &filename, file_size)
+				.await
 			{
 				Ok(job_id) => {
 					let latency = start.elapsed();
@@ -335,25 +328,48 @@ async fn run_stress_test(config: Config) -> Result<(), Box<dyn std::error::Error
 	// Print results
 	println!("\n=== Results ===");
 	println!("Total Requests: {}", final_stats.total_requests);
-	println!("Successful: {} ({:.1}%)", 
+	println!(
+		"Successful: {} ({:.1}%)",
 		final_stats.successful_requests,
 		(final_stats.successful_requests as f64 / final_stats.total_requests as f64) * 100.0
 	);
-	println!("Failed: {} ({:.1}%)",
+	println!(
+		"Failed: {} ({:.1}%)",
 		final_stats.failed_requests,
 		(final_stats.failed_requests as f64 / final_stats.total_requests as f64) * 100.0
 	);
 	println!();
-	println!("Throughput: {:.2} requests/second", final_stats.throughput());
+	println!(
+		"Throughput: {:.2} requests/second",
+		final_stats.throughput()
+	);
 	println!();
 	println!("Latency (ms):");
-	println!("  Min:  {:.2}", final_stats.min_latency().as_secs_f64() * 1000.0);
-	println!("  Avg:  {:.2}", final_stats.avg_latency().as_secs_f64() * 1000.0);
-	println!("  P95:  {:.2}", final_stats.percentile_latency(95.0).as_secs_f64() * 1000.0);
-	println!("  P99:  {:.2}", final_stats.percentile_latency(99.0).as_secs_f64() * 1000.0);
-	println!("  Max:  {:.2}", final_stats.max_latency().as_secs_f64() * 1000.0);
+	println!(
+		"  Min:  {:.2}",
+		final_stats.min_latency().as_secs_f64() * 1000.0
+	);
+	println!(
+		"  Avg:  {:.2}",
+		final_stats.avg_latency().as_secs_f64() * 1000.0
+	);
+	println!(
+		"  P95:  {:.2}",
+		final_stats.percentile_latency(95.0).as_secs_f64() * 1000.0
+	);
+	println!(
+		"  P99:  {:.2}",
+		final_stats.percentile_latency(99.0).as_secs_f64() * 1000.0
+	);
+	println!(
+		"  Max:  {:.2}",
+		final_stats.max_latency().as_secs_f64() * 1000.0
+	);
 
-	let elapsed = final_stats.end_time.unwrap().duration_since(final_stats.start_time);
+	let elapsed = final_stats
+		.end_time
+		.unwrap()
+		.duration_since(final_stats.start_time);
 	println!();
 	println!("Total Time: {:.2}s", elapsed.as_secs_f64());
 
