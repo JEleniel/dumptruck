@@ -10,7 +10,7 @@ publish = false
 
 [[bin]]
 name = "stress-test"
-path = "stress_test.rs"
+path = "src/stress_test.rs"
 
 [dependencies]
 axum = { version = "0.8", features = ["http2", "macros", "multipart"] }
@@ -18,6 +18,7 @@ axum-server = { version = "0.8", features = ["tls-openssl", "tls-rustls"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
 config = { version = "0.15", features = [] }
+dirs = { version = "5.0" }
 ed25519-dalek = { version = "2.1", features = ["serde"] }
 glob = { version = "0.3" }
 hex = { version = "0.4", features = ["serde"] }
@@ -26,13 +27,10 @@ hyper = { version = "1.6", features = ["full"] }
 icu_casemap = { version = "2.1", features = ["compiled_data", "serde"] }
 md4 = { version = "0.10" }
 md5 = { version = "0.8" }
-postgres = { version = "0.19", features = [
-  "with-chrono-0_4",
-  "with-serde_json-1",
-  "with-uuid-1"
-] }
+once_cell = { version = "1.20" }
 rand = { version = "0.8" }
 rayon = { version = "1.8" }
+regex = "1.12.2"
 reqwest = { version = "0.12", features = [
   "brotli",
   "deflate",
@@ -41,6 +39,12 @@ reqwest = { version = "0.12", features = [
   "multipart",
   "stream",
   "zstd"
+] }
+rusqlite = { version = "0.33", features = [
+  "bundled",
+  "chrono",
+  "serde_json",
+  "uuid"
 ] }
 rustls = { version = "0.23", features = ["brotli", "ring", "std"] }
 rustls-pemfile = { version = "2.2" }

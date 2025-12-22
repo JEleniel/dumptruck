@@ -1,9 +1,10 @@
 //! Command-line interface for Dumptruck bulk data analysis.
 
+use std::path::PathBuf;
+
 use clap::{Parser, ValueEnum};
 use glob::glob;
 use rayon::prelude::*;
-use std::path::PathBuf;
 
 /// Dumptruck: Bulk data analysis tool for cyber threat identification
 #[derive(Parser, Debug)]
@@ -44,8 +45,9 @@ pub struct IngestArgs {
 	#[arg(short, long, value_name = "FILE")]
 	pub output: Option<PathBuf>,
 
-	/// Database connection string (default: docker-compose service)
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// Use filesystem storage instead of database
@@ -89,6 +91,7 @@ pub struct IngestArgs {
 	pub output_format: OutputFormat,
 
 	/// Configuration file path (JSON format) for API keys and domain substitutions
+	/// Searched in order: ~/.config/dumptruck/config.json, /etc/dumptruck/config.json, config.json
 	#[arg(long, short = 'c', value_name = "FILE")]
 	pub config: Option<PathBuf>,
 
@@ -206,8 +209,9 @@ pub struct StatusArgs {
 	#[arg(long, value_name = "URL")]
 	pub ollama_url: Option<String>,
 
-	/// Database connection string
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// HIBP API key
@@ -222,8 +226,9 @@ pub struct StatusArgs {
 /// Arguments for the stats command
 #[derive(Parser, Debug)]
 pub struct StatsArgs {
-	/// Database connection string (default: docker-compose service)
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// Show detailed breakdown
@@ -246,8 +251,9 @@ pub struct ExportDbArgs {
 	#[arg(short, long, value_name = "FILE")]
 	pub output: PathBuf,
 
-	/// Database connection string (default: docker-compose service)
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// Include detailed metadata and audit trails
@@ -266,8 +272,9 @@ pub struct ImportDbArgs {
 	#[arg(short, long, value_name = "FILE")]
 	pub input: PathBuf,
 
-	/// Database connection string (default: docker-compose service)
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// Validate data integrity before import
@@ -360,7 +367,8 @@ pub struct ServerArgs {
 	#[arg(short, long, value_name = "PORT", default_value = "8443")]
 	pub port: u16,
 
-	/// Path to configuration file (defaults to config.json)
+	/// Path to configuration file (JSON format)
+	/// Searched in order: ~/.config/dumptruck/config.json, /etc/dumptruck/config.json, config.json
 	#[arg(short, long, value_name = "PATH")]
 	pub config: Option<String>,
 
@@ -407,8 +415,9 @@ pub struct ServerArgs {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use clap::Parser;
+
+	use super::*;
 
 	#[test]
 	fn test_cli_parse_basic_ingest() {

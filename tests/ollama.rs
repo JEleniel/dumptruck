@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod ollama_client_tests {
-	use dumptruck::ollama::OllamaClient;
+	use dumptruck::enrichment::ollama::OllamaClient;
 
 	#[test]
 	fn test_ollama_client_defaults() {
