@@ -33,8 +33,6 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
 
-      - uses: Swatinem/rust-cache@v2
-
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   audit:
@@ -121,7 +119,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dumptruck
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./cobertura.xml
           fail_ci_if_error: false
