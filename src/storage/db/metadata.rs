@@ -1,7 +1,7 @@
 //! File metadata and processing tracking.
 
-use std::io;
 use rusqlite::Connection;
+use std::io;
 
 /// Insert file metadata record.
 pub fn insert_file_metadata(
@@ -73,10 +73,7 @@ pub fn insert_anomaly_score(
 }
 
 /// Get anomalies for a file.
-pub fn get_anomalies_for_file(
-	conn: &Connection,
-	file_id: &str,
-) -> io::Result<Vec<(String, i32)>> {
+pub fn get_anomalies_for_file(conn: &Connection, file_id: &str) -> io::Result<Vec<(String, i32)>> {
 	let mut stmt = conn
 		.prepare("SELECT subject_hash, risk_score FROM anomaly_scores WHERE file_id = ?1")
 		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -98,12 +95,18 @@ pub fn get_high_risk_anomalies(
 	threshold: i32,
 ) -> io::Result<Vec<(String, String, i32)>> {
 	let mut stmt = conn
-		.prepare("SELECT subject_hash, anomaly_type, risk_score FROM anomaly_scores WHERE risk_score > ?1")
+		.prepare(
+			"SELECT subject_hash, anomaly_type, risk_score FROM anomaly_scores WHERE risk_score > ?1",
+		)
 		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
 	let high_risk = stmt
 		.query_map(rusqlite::params![threshold], |row| {
-			Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i32>(2)?))
+			Ok((
+				row.get::<_, String>(0)?,
+				row.get::<_, String>(1)?,
+				row.get::<_, i32>(2)?,
+			))
 		})
 		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
 		.collect::<Result<Vec<_>, _>>()

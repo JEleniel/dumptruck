@@ -1,7 +1,7 @@
 //! Co-occurrence and breach data management.
 
-use std::io;
 use rusqlite::Connection;
+use std::io;
 
 /// Record address co-occurrence edge.
 pub fn record_address_cooccurrence(
