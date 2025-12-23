@@ -84,8 +84,89 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ steps.tag.outputs.VERSION }}
-          draft: false
-          prerelease: ${{ contains(steps.tag.outputs.VERSION, '-') }}
-          files: |
-            artifacts/**/*
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.target }}/release/${{ matrix.asset_name }}.sha256
+          asset_name: ${{ matrix.asset_name }}.sha256
+          asset_content_type: text/plain
+
+  build-deb:
+    name: Build Debian Package (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            target: x86_64-unknown-linux-gnu
+            dpkg_arch: amd64
+
+          - arch: arm64
+            target: aarch64-unknown-linux-gnu
+            dpkg_arch: arm64
+
+    needs: create-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper-compat cargo dh-cargo
+
+      - name: Set version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "DEB_VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Update debian/changelog
+        run: |
+          VERSION=${{ steps.version.outputs.DEB_VERSION }}
+          TIMESTAMP=$(date -R)
+          cat > debian/changelog.new << EOF
+          dumptruck ($VERSION-1) unstable; urgency=medium
+
+            * Release version $VERSION
+
+           -- Dumptruck Contributors <support@dumptruck.io>  $TIMESTAMP
+          EOF
+          cat debian/changelog >> debian/changelog.new
+          mv debian/changelog.new debian/changelog
+
+      - name: Build Debian package
+        run: |
+          DEB_BUILD_OPTIONS=nostrip dpkg-buildpackage -us -uc -b --target-arch=${{ matrix.dpkg_arch }}
+
+      - name: Generate checksums
+        run: |
+          cd ..
+          sha256sum dumptruck_*.deb > dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+          cat dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+
+      - name: Upload .deb package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}-1_${{ matrix.dpkg_arch }}.deb
+          asset_name: dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb
+          asset_content_type: application/vnd.debian.binary-package
+
+      - name: Upload .deb checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+          asset_name: dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+          asset_content_type: text/plain
