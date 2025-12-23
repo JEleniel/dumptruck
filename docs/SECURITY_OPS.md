@@ -98,6 +98,267 @@ chmod 644 tls.crt
 4. Restart Dumptruck server gracefully (existing connections complete, new connections use new cert)
 5. Verify new certificate is active: `openssl s_client -connect dumptruck:8443`
 
+## Evidence Preservation & File Integrity
+
+### Overview
+
+Each ingested file receives unique identification and dual cryptographic signatures for forensic verification and integrity checking.
+
+### File Identification
+
+Every file processed receives:
+
+- **File ID**: UUID v4 generated at ingestion time (immutable, unique per file)
+- **SHA-256 Hash**: Standard cryptographic hash for integrity verification
+- **BLAKE3 Hash**: Modern high-performance hash for redundant verification
+- **Alternate Names**: Track all file name variants for the same data (e.g., multiple copies with different names)
+- **Timestamps**: Created time (when file received) + processed time (when pipeline started)
+
+### Configuration
+
+```json
+{
+  "evidence": {
+    "enabled": true,
+    "compute_dual_hashes": true,
+    "track_alternate_names": true,
+    "storage": "database"
+  }
+}
+```
+
+### Verification Workflow
+
+**To verify file integrity at any time:**
+
+```bash
+# Retrieve file metadata including hashes
+dumptruck evidence get FILE_ID
+
+# Output shows:
+# {
+#   "file_id": "550e8400-e29b-41d4-a716-446655440000",
+#   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+#   "blake3": "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c0bacc216b10183db3ae2b186",
+#   "alternate_names": ["data_v1.csv", "breach_2025.csv", "Dataset_Final.csv"],
+#   "created_at": "2025-12-16T14:30:00Z",
+#   "processed_at": "2025-12-16T14:30:05Z"
+# }
+
+# Verify current file hash matches stored hash
+sha256sum data.csv  # Compare output with sha256 from metadata
+blake3 data.csv      # Compare output with blake3 from metadata
+```
+
+### Compliance Implications
+
+- **GDPR**: File integrity chain supports audit trail requirements
+- **HIPAA**: Non-repudiation through dual hashing and immutable file IDs
+- **PCI-DSS**: Dual hashing meets redundancy requirements for forensic evidence
+- **ISO 27001**: Chain of Evidence supports information security management
+
+## Chain of Custody
+
+### Overview
+
+Every file processed through Dumptruck generates an immutable, cryptographically signed Chain of Custody record for regulatory compliance (GDPR, HIPAA, PCI-DSS, etc.).
+
+### Chain of Custody Entry
+
+Each entry contains:
+
+- **Entry ID**: UUID v4 (unique per CoC entry)
+- **File ID**: Reference to file_metadata UUID
+- **Operator**: User or service identity (from OAuth token, hostname, or configured value)
+- **Timestamp**: ISO-8601 timestamp of ingestion
+- **Action**: "ingest", "enrich", "analyze", etc.
+- **File Hash**: SHA-256 of file contents (immutable proof of data)
+- **Record Count**: Number of records processed from file
+- **ED25519 Signature**: Cryptographic signature proving operator identity + timestamp + data integrity
+- **Verified At**: When signature was validated (on retrieval)
+
+### Configuration
+
+```json
+{
+  "chain_of_custody": {
+    "enabled": true,
+    "signing_key_path": "/etc/dumptruck/keys/coc.private.key",
+    "verify_on_retrieval": true,
+    "storage": "database"
+  }
+}
+```
+
+### ED25519 Key Generation
+
+```bash
+# Generate ED25519 keypair for Chain of Custody signing
+openssl genpkey -algorithm ED25519 -out coc.private.key
+
+# Export public key (for verification in air-gapped environments)
+openssl pkey -in coc.private.key -pubout -out coc.public.key
+
+# Secure private key
+chmod 600 coc.private.key
+chmod 644 coc.public.key
+```
+
+### Create a Chain of Custody Record
+
+```bash
+# Automatically created on each ingest:
+dumptruck ingest data.csv --operator "analyst@security.company.com"
+
+# System generates CoC entry:
+# {
+#   "id": "550e8400-e29b-41d4-a716-446655440001",
+#   "file_id": "550e8400-e29b-41d4-a716-446655440000",
+#   "operator": "analyst@security.company.com",
+#   "timestamp": "2025-12-16T14:30:05Z",
+#   "action": "ingest",
+#   "file_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+#   "record_count": 1000,
+#   "signature": "abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yz...",
+#   "verified_at": null
+# }
+```
+
+### Verify Chain of Custody
+
+```bash
+# Retrieve and verify CoC entry
+dumptruck coc verify COC_ENTRY_ID
+
+# Output shows verification result:
+# {
+#   "valid": true,
+#   "operator": "analyst@security.company.com",
+#   "timestamp": "2025-12-16T14:30:05Z",
+#   "file_hash_matches": true,
+#   "record_count_matches": true,
+#   "signature_verified": true,
+#   "verified_at": "2025-12-16T14:35:12Z"
+# }
+```
+
+### Compliance Workflow
+
+**For regulatory audits:**
+
+1. Operator ingests file with identity: `dumptruck ingest breach.csv --operator "jane@company.com"`
+2. System generates signed CoC entry
+3. During audit, retrieve all CoC entries: `dumptruck coc list --operator "jane@company.com"`
+4. Verify signatures: `dumptruck coc verify-batch --date-range "2025-01-01 to 2025-12-31"`
+5. Export audit report: `dumptruck coc export --format json --output audit_report.json`
+
+## Secure Deletion (File Shredding)
+
+### Overview
+
+Dumptruck automatically shreds temporary files after processing to prevent data ghosting via forensic recovery tools (e.g., `dd` with raw disk reads). Uses NIST SP 800-88 3-pass overwrite: 0x00 (zeros), 0xFF (ones), random data.
+
+### Scope
+
+Shredding applies to:
+
+- Extracted files from compressed archives (Stage 2)
+- Temporary processing artifacts (intermediate CSV, JSON)
+- Cache files (if caching enabled)
+- Parsing buffers
+
+**NOT shredded** (by design):
+
+- PostgreSQL database files (use encrypted volumes instead, e.g., LUKS)
+- Stored results (meant to be kept)
+- Audit logs and Chain of Custody records (forensic evidence)
+
+### Configuration
+
+```json
+{
+  "secure_deletion": {
+    "enabled": true,
+    "method": "nist_3_pass",
+    "passes": 3,
+    "audit_log": true,
+    "verify_removal": true,
+    "temp_dirs": [
+      "/tmp/dumptruck",
+      "/var/tmp/dumptruck"
+    ]
+  }
+}
+```
+
+### How It Works
+
+1. **Mark**: On file creation, mark for shredding
+2. **Track**: Log file path + size in shredding queue
+3. **Overwrite**: At pipeline end, overwrite 3 times:
+   + Pass 1: 0x00 (all zeros)
+   + Pass 2: 0xFF (all ones)
+   + Pass 3: Random data
+4. **Delete**: Unlink file after verification
+5. **Audit**: Log successful shredding with timestamp
+
+### Performance Impact
+
+- **Small files** (<1MB): <1ms per file
+- **Medium files** (1-100MB): 10-100ms per file
+- **Large files** (100MB+): 100-500ms per file
+- **Batches**: Shred operations run sequentially (don't parallelize to avoid I/O contention)
+
+### Verify Shredding
+
+```bash
+# Check shredding audit log
+dumptruck secure-deletion audit --date "2025-12-16"
+
+# Output shows:
+# [
+#   {
+#     "timestamp": "2025-12-16T14:30:10Z",
+#     "file_path": "/tmp/dumptruck/extract_550e8400.zip",
+#     "file_size_bytes": 1048576,
+#     "passes": 3,
+#     "status": "success",
+#     "verification": "file_not_found_after_unlink"
+#   },
+#   {
+#     "timestamp": "2025-12-16T14:30:15Z",
+#     "file_path": "/tmp/dumptruck/temp_parsing_buffer.tmp",
+#     "file_size_bytes": 524288,
+#     "passes": 3,
+#     "status": "success",
+#     "verification": "inode_deallocated"
+#   }
+# ]
+```
+
+### Troubleshooting
+
+**Shredding fails on certain files:**
+
+- Check file permissions: Dumptruck must own the temp file
+- Check disk space: Ensure enough free space for overwrite operations
+- Check filesystem: Some filesystems (e.g., ZFS with compression) may not support direct overwrite
+
+**Performance degradation:**
+
+- Monitor disk I/O during shredding (`iostat -x 1`)
+- Consider scheduling shredding during off-peak hours
+- Increase `passes` parameter cautiously (default 3 is NIST-recommended)
+
+### Compliance Implications
+
+- **HIPAA**: Shredding meets "secure deletion" requirements for medical data
+- **GDPR**: Supports "right to erasure" by removing all trace of data
+- **PCI-DSS**: Requirement 3.2.4 explicitly requires secure deletion method (NIST compliant)
+- **SOC 2**: Demonstrates commitment to data protection and disposal
+
+````
+
 **Monitoring Certificate Expiry:**
 
 ```bash

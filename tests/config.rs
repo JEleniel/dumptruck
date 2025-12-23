@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod config_tests {
-	use dumptruck::config::Config;
+	use dumptruck::core::config::Config;
 
 	#[test]
 	fn test_config_creation() {

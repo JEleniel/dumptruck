@@ -9,98 +9,80 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ env.VERSION }}
-    steps:
-      - name: Get version from tag
-        id: tag_name
-        run: |
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      - uses: actions/checkout@v4
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          git log --oneline $(git describe --tags --abbrev=0 HEAD^)..HEAD > CHANGELOG_TEMP.txt || echo "Initial release" > CHANGELOG_TEMP.txt
-          cat CHANGELOG_TEMP.txt
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
-          draft: false
-          prerelease: ${{ contains(env.VERSION, '-') }}
-
-      - name: Upload changelog
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./CHANGELOG_TEMP.txt
-          asset_name: CHANGELOG.txt
-          asset_content_type: text/plain
-
-  build-binaries:
-    name: Build ${{ matrix.target }}
+  build:
+    name: Build ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary_name: dumptruck
-            asset_name: dumptruck-linux-x86_64
+            artifact_name: dumptruck
 
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            binary_name: dumptruck
-            asset_name: dumptruck-linux-aarch64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: dumptruck
 
-    needs: create-release
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: dumptruck.exe
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
       - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
 
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }} --verbose
+
+      - name: Package Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a dumptruck-windows.zip dumptruck.exe
+          move dumptruck-windows.zip ..\..\..
+
+      - name: Package macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          zip -r dumptruck-macos.zip dumptruck
+          mv dumptruck-macos.zip ../../../
 
       - name: Generate checksums
         run: |
           cd target/${{ matrix.target }}/release
-          sha256sum ${{ matrix.binary_name }} > ${{ matrix.asset_name }}.sha256
-          cat ${{ matrix.asset_name }}.sha256
+          sha256sum ${{ matrix.artifact_name }} > checksum.sha256
+          cat checksum.sha256
 
-      - name: Upload binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./target/${{ matrix.target }}/release/${{ matrix.binary_name }}
-          asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/octet-stream
+          name: dumptruck-${{ matrix.os }}
+          path: |
+            target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+            target/${{ matrix.target }}/release/checksum.sha256
+            dumptruck-*.zip
 
-      - name: Upload checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version from tag
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./target/${{ matrix.target }}/release/${{ matrix.asset_name }}.sha256

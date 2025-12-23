@@ -168,3 +168,93 @@ CREATE INDEX IF NOT EXISTS idx_address_breaches_breach_name
 	ON address_breaches(breach_name);
 CREATE INDEX IF NOT EXISTS idx_address_breaches_checked_at
 	ON address_breaches(checked_at);
+
+-- ==============================================================================
+-- Stage 13: Storage Enhancement Schema Extensions
+-- ==============================================================================
+
+-- File Metadata Table (Stage 1: Evidence Preservation)
+CREATE TABLE IF NOT EXISTS file_metadata (
+	id bigserial primary key,
+	file_id text not null unique,
+	original_filename text not null,
+	sha256_hash text not null,
+	blake3_hash text,
+	file_size bigint not null,
+	alternate_names jsonb default '[]'::jsonb,
+	created_at timestamptz default now(),
+	ingested_at timestamptz,
+	processing_status text default 'pending'
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_metadata_file_id ON file_metadata(file_id);
+CREATE INDEX IF NOT EXISTS idx_file_metadata_sha256_hash ON file_metadata(sha256_hash);
+CREATE INDEX IF NOT EXISTS idx_file_metadata_blake3_hash ON file_metadata(blake3_hash);
+CREATE INDEX IF NOT EXISTS idx_file_metadata_original_filename ON file_metadata(original_filename);
+CREATE INDEX IF NOT EXISTS idx_file_metadata_created_at ON file_metadata(created_at);
+
+-- Chain of Custody Records Table (Stage 4: Chain of Custody)
+CREATE TABLE IF NOT EXISTS chain_of_custody_records (
+	id bigserial primary key,
+	file_id text not null references file_metadata(file_id) on delete cascade,
+	record_id text not null unique,
+	custody_action text not null,
+	operator text not null,
+	file_hash text not null,
+	signature bytea not null,
+	public_key bytea not null,
+	record_count integer default 0,
+	notes text,
+	action_timestamp timestamptz default now(),
+	created_at timestamptz default now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chain_of_custody_file_id ON chain_of_custody_records(file_id);
+CREATE INDEX IF NOT EXISTS idx_chain_of_custody_record_id ON chain_of_custody_records(record_id);
+CREATE INDEX IF NOT EXISTS idx_chain_of_custody_operator ON chain_of_custody_records(operator);
+CREATE INDEX IF NOT EXISTS idx_chain_of_custody_action ON chain_of_custody_records(custody_action);
+CREATE INDEX IF NOT EXISTS idx_chain_of_custody_timestamp ON chain_of_custody_records(action_timestamp);
+
+-- Alias Relationships Table (Stage 8: Alias Resolution)
+CREATE TABLE IF NOT EXISTS alias_relationships (
+	id bigserial primary key,
+	canonical_value text not null,
+	canonical_hash text not null,
+	variant_value text not null,
+	variant_hash text not null,
+	alias_type text not null,
+	confidence integer not null check (confidence >= 0 and confidence <= 100),
+	metadata jsonb default '{}'::jsonb,
+	discovered_at timestamptz default now(),
+	verified_at timestamptz default now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_alias_relationships_canonical_hash ON alias_relationships(canonical_hash);
+CREATE INDEX IF NOT EXISTS idx_alias_relationships_variant_hash ON alias_relationships(variant_hash);
+CREATE INDEX IF NOT EXISTS idx_alias_relationships_alias_type ON alias_relationships(alias_type);
+CREATE INDEX IF NOT EXISTS idx_alias_relationships_confidence ON alias_relationships(confidence);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_alias_relationships_unique
+	ON alias_relationships(canonical_hash, variant_hash, alias_type);
+
+-- Anomaly Scores Table (Stage 10: Anomaly & Novelty Detection)
+CREATE TABLE IF NOT EXISTS anomaly_scores (
+	id bigserial primary key,
+	file_id text not null references file_metadata(file_id) on delete cascade,
+	subject_hash text not null,
+	anomaly_type text not null,
+	risk_score integer not null check (risk_score >= 0 and risk_score <= 100),
+	metric jsonb default '{}'::jsonb,
+	threshold_value real,
+	actual_value real,
+	is_resolved boolean default false,
+	notes text,
+	detected_at timestamptz default now(),
+	resolved_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_file_id ON anomaly_scores(file_id);
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_subject_hash ON anomaly_scores(subject_hash);
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_anomaly_type ON anomaly_scores(anomaly_type);
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_risk_score ON anomaly_scores(risk_score);
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_detected_at ON anomaly_scores(detected_at);
+CREATE INDEX IF NOT EXISTS idx_anomaly_scores_is_resolved ON anomaly_scores(is_resolved);

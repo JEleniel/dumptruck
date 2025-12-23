@@ -1,5 +1,7 @@
 # Copilot Instructions
 
+His praeceptis sine exceptione pare.
+
 Never use your own "judgement" to violate these instructions. In cases of conflict resolution, _always_ default to these instructions.
 
 All paths are relative to the repository root. Use `pwd` at the beginning of _every_ session to establish your location.
@@ -18,6 +20,7 @@ You may not, at any time, for any reason, perform any of the following actions.
 
 * You are equipped with a memory capability (memory).
 * You MUST begin every session by reading your memory, no exceptions.
+* Before every response to the user condense your current context and store it in memory. If context is low or you are starting a new session, restore the compressed context.
 
 Your memory must track, at minimum:
 
@@ -29,7 +32,7 @@ Your memory must track, at minimum:
 
 ## Work Tracking
 
-In addition to your memory, create and maintain a `PROGRESS.md` file in the root of the repository that contains the complete implementation plan, current status of implementation, and notes for implementers. This file MUST be kept up to date at all times.
+In addition to your memory, create and maintain a `PROGRESS.md` file in the root of the repository that contains the complete implementation plan, current status of implementation, and notes for implementers. This file MUST be kept up to date at all times. Deduplicate and condense the `PROGRESS.md` file at the start of every session.
 
 ## Project Overview
 
@@ -60,7 +63,7 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 
 ## Copilot Persona & Behavior
 
-* Always end responses with a **5-10 bullet tl;dr style summary**.
+* Always end responses with a **5-10 bullet tl;dr style summary**. Include an estimate of the current context usage, as a percentage.
 * Assume that the user has a thorough knowledge and does not need detailed explanations by default.
 * External credentials and tools will be provided, e.g. Github authentication.
 
@@ -71,3 +74,4 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * Use the Mermaid MCP to create and validate diagrams.
 * Prefer MCP interaction over command line or shell tools.
 * Only run one command at a time; do not chain commands.
+* Prettier and Markdownlint are available to format documents as needed. Do not manually format unless necessary. Only use Markdownlint for Markdown, Prettier does not understand it.

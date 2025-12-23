@@ -5,47 +5,73 @@ edition = "2024"
 description = "A high-performance bulk data analysis system for threat intelligence and credential breach analysis"
 readme = "README.md"
 repository = "https://github.com/JEleniel/dumptruck"
-license = "GPL-3.0-or-later"
+license = "MIT-or-APACHE-2.0"
 publish = false
 
 [[bin]]
 name = "stress-test"
-path = "stress_test.rs"
+path = "src/stress_test.rs"
 
 [dependencies]
-axum = { version = "0.8", features = ["macros"] }
-axum-server = { version = "0.7", features = ["tls-rustls"] }
+axum = { version = "0.8", features = ["http2", "macros", "multipart"] }
+axum-server = { version = "0.8", features = ["tls-openssl", "tls-rustls"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
-config = "0.14"
-glob = "0.3"
-hex = "0.4"
-http-body-util = "0.1"
+config = { version = "0.15", features = [] }
+dirs = { version = "5.0" }
+ed25519-dalek = { version = "2.1", features = ["serde"] }
+glob = { version = "0.3" }
+hex = { version = "0.4", features = ["serde"] }
+http-body-util = { version = "0.1", features = ["full"] }
 hyper = { version = "1.6", features = ["full"] }
-icu_casemap = { version = "2.1", features = ["compiled_data"] }
-md5 = "0.7"
-postgres = "0.19"
-rayon = "1.8"
-reqwest = { version = "0.12", features = ["json"] }
-rustls = { version = "0.23", features = ["ring", "std"] }
-rustls-pemfile = "2.2"
-serde = "1.0"
-serde_json = "1.0"
-sha1 = "0.10"
-sha2 = "0.10"
-thiserror = "2.0"
+icu_casemap = { version = "2.1", features = ["compiled_data", "serde"] }
+md4 = { version = "0.10" }
+md5 = { version = "0.8" }
+once_cell = { version = "1.20" }
+rand = { version = "0.8" }
+rayon = { version = "1.8" }
+regex = "1.12.2"
+reqwest = { version = "0.12", features = [
+  "brotli",
+  "deflate",
+  "gzip",
+  "json",
+  "multipart",
+  "stream",
+  "zstd"
+] }
+rusqlite = { version = "0.33", features = [
+  "bundled",
+  "chrono",
+  "serde_json",
+  "uuid"
+] }
+rustls = { version = "0.23", features = ["brotli", "ring", "std"] }
+rustls-pemfile = { version = "2.2" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+sha1 = { version = "0.10" }
+sha2 = { version = "0.10" }
+thiserror = { version = "2.0" }
 tokio = { version = "1.40", features = ["full"] }
-tokio-rustls = "0.26"
-tokio-util = { version = "0.7", features = ["io"] }
-tower = { version = "0.4", features = ["util"] }
+tokio-rustls = { version = "0.26", features = ["brotli", "zlib"] }
+tokio-util = { version = "0.7", features = ["full"] }
+tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-unicode-normalization = "0.1"
-urlencoding = "2.1"
-uuid = { version = "1.10", features = ["serde", "v4"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = [
+  "chrono",
+  "env-filter",
+  "json",
+  "serde",
+  "serde_json"
+] }
+unicode-normalization = { version = "0.1" }
+urlencoding = { version = "2.1" }
+uuid = { version = "1.10", features = ["serde", "v4", "v7"] }
 
 [dev-dependencies]
-assert_cmd = "2"
-predicates = "2"
-proptest = "1.0"
+assert_cmd = { version = "2", features = ["color-auto"] }
+predicates = { version = "2" }
+proptest = { version = "1.0" }
+tempfile = { version = "3" }

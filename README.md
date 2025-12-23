@@ -27,28 +27,86 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - **Memory-Efficient Streaming**: Process GB/TB-scale files with constant memory usage via line-by-line streaming
 - **Parallel Processing**: Batch ingest with glob patterns and configurable worker threads
 - **Safe Ingestion**: Binary detection, UTF-8 validation with lossy fallback, 100MB file size limits, zero-crash guarantee
+- **Evidence Preservation**: Unique file IDs with dual hash signatures (SHA-256 + BLAKE3) and alternate name tracking
+- **Compression Detection**: Automatic ZIP/gzip detection with safe nested level limits (max 3 levels)
 
 ### Normalization & Deduplication
 
 - **Unicode Canonicalization**: NFKC normalization + ICU4X case-folding + punctuation rules for consistent comparisons
 - **Smart Email Handling**: Automatic domain alias substitution (e.g., `googlemail.com` → `gmail.com`)
-- **Hash-Based Deduplication**: Exact matching with SHA-256 hashing for O(1) lookups
+- **Alias Resolution**: Links between entries identified across email, user IDs, and phone numbers
+- **Hash-Based Deduplication**: Exact matching with SHA-256 + dual field hashing for O(1) lookups and minor-variation detection
 - **Vector Similarity Search**: Ollama embeddings (768-dim Nomic vectors) with pgvector IVFFlat indexing for near-duplicate detection
 - **Bloom Filter Sync**: Distributed deduplication via peer discovery and bandwidth-efficient delta sync
 
 ### Intelligence & Enrichment
 
-- **PII/NPI Detection**: Identifies phone numbers (15+ countries), SSNs, credit cards, crypto addresses (Bitcoin, Ethereum, XRP), IBAN/SWIFT codes, national IDs (15+ countries), IP addresses, and digital wallets
-- **Weak Password Detection**: Rainbow table with 40+ common passwords and 3-5 character keyboard patterns; pre-hashed credential detection (bcrypt, scrypt, argon2, MD5, SHA1, SHA256)
-- **Breach Enrichment**: Have I Been Pwned (HIBP) API integration for real-time breach data lookup and tracking
+- **Field Identification & Documentation**: Automatically tags ID, password, PII, and NPI fields with clear reporting
+- **Comprehensive Threat Detection**: 40+ detection types across PII, weak credentials, hash formats, and anomalies
+- **Risk Scoring**: Assigns 0-100 risk score based on weak password count, credential compromise potential, breach history, and anomaly contributions
+- **Breach Enrichment**: Have I Been Pwned (HIBP) API integration for real-time breach data lookup; background thread continuously enriches corpus in server mode
 - **Co-occurrence Analysis**: Graph-based tracking of address relationships and credential associations
+
+#### Detection Capabilities
+
+**PII/NPI (Personally Identifiable Information & Non-Public Information):**
+
+- Email addresses with column name hinting
+- IP addresses (IPv4 and IPv6, excluding private ranges)
+- Phone numbers (10-15 digits, 15+ countries with formatting support)
+- Social Security Numbers (US format: XXX-XX-XXXX)
+- National IDs (15+ countries: UK National Insurance, EU formats, and more)
+- Credit card numbers (standard formats with Luhn validation)
+- Names (person name pattern matching)
+- Mailing addresses (physical address detection)
+- Bank account information (IBAN, SWIFT codes, routing numbers, account numbers)
+
+**Cryptocurrency & Digital Assets:**
+
+- Crypto addresses (Bitcoin, Ethereum, XRP, and other blockchain networks)
+- Digital wallet tokens (Stripe, Square, PayPal, Apple Pay, Google Pay)
+
+**Weak & Compromised Credentials:**
+
+- Weak passwords (dictionary-based plaintext comparison)
+- Weak password hashes via rainbow tables:
+    + bcrypt ($2a$, $2b$, $2y$)
+    + Argon2 variants ($argon2id$, $argon2i$, $argon2d$)
+    + scrypt ($7$)
+    + PBKDF2 ($pbkdf2-sha256$, $pbkdf2-sha512$)
+    + Unsalted hashes: MD5 (32 hex), SHA1 (40 hex), SHA256 (64 hex), SHA512 (128 hex), NTLM
+- Hash algorithm fingerprinting by pattern
+
+**Anomaly & Novelty Detection:**
+
+- Entropy outliers (>3σ deviation in character distribution)
+- Unseen field combinations (rare or unprecedented pairings)
+- Rare domains (infrequent top-level domains)
+- Unusual credential formats (non-standard password structures)
+- Length outliers (statistical deviation in field length)
+- Uniform distribution detection (suspiciously uniform characters)
+- Baseline deviation (statistical outliers from dataset baseline)
+
+**Data Quality & Safety:**
+
+- Binary file detection during ingest
+- UTF-8 validation with lossy fallback
+- Compression detection (ZIP/gzip with safe nesting limits)
+- File integrity (dual hash signatures: SHA-256 + BLAKE3)
+- Vector similarity search (Ollama embeddings with pgvector IVFFlat indexing)
+
+### Chain of Custody & Security
+
+- **Chain of Custody**: Cryptographically signed entry for each file processed (ED25519) with operator, timestamp, and audit trail for compliance
+- **Secure Deletion**: Temporary files shredded (3-pass NIST SP 800-88 overwrite) to prevent data ghosting via forensic recovery
+- **Privacy-First**: Historical data stored only as non-reversible hashes; zero exposure even if database is compromised
 
 ### Deployment & Operations
 
 - **CLI & Server Modes**: Standalone tool or HTTP/2 REST API with TLS 1.3+ and OAuth 2.0
-- **Flexible Output**: JSON, CSV, JSONL, or human-readable text formats
+- **Flexible Output**: JSON, CSV, JSONL, or human-readable text formats with field classification documentation
 - **Peer Discovery**: Automatic subnet peer detection via UDP broadcast for distributed deployments
-- **Comprehensive Audit Logging**: Structured JSON logging with metadata events for forensics and compliance
+- **Comprehensive Audit Logging**: Structured JSON logging with metadata events, Chain of Custody records, and forensic details
 - **High Performance**: >800 requests/second on Raspberry Pi 5 with concurrent TLS connections
 
 ---
@@ -58,21 +116,17 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 ### Prerequisites
 
 - Rust 1.70+
-- PostgreSQL 12+ (for server mode)
-- Ollama 0.1+ (for similarity search)
+- Ollama 0.1+ (optional, for similarity search)
 - Docker & Docker Compose (optional, for containerized setup)
 
-### 1. Using Docker Compose (Recommended)
+### 1. Quick Start (CLI)
 
 ```bash
 # Clone and enter the repository
 git clone https://github.com/yourusername/dumptruck.git
 cd dumptruck
 
-# Start PostgreSQL and Ollama services
-docker-compose up -d
-
-# Run tests to verify setup
+# Run tests to verify build
 cargo test
 
 # Ingest a CSV file
@@ -82,14 +136,28 @@ cargo run -- ingest tests/fixtures/clean_csv.csv
 cargo run -- server --cert /etc/tls/tls.crt --key /etc/tls/tls.key
 ```
 
-### 2. Manual Setup
+### 2. With Optional Services (Docker Compose)
+
+```bash
+# Start Ollama service (if you want vector embeddings)
+cd docker/ollama
+docker-compose up -d
+
+# Run tests to verify setup
+cargo test
+
+# Ingest with embeddings enabled (requires Ollama running)
+cargo run -- ingest data.csv --embeddings --ollama-url http://localhost:11434
+
+# Stop Ollama when done
+docker-compose down -v
+```
+
+### 3. Manual Build
 
 ```bash
 # Build the project
 cargo build --release
-
-# Set up PostgreSQL and Ollama manually
-# (See docs/architecture/DEPLOYMENT.md for detailed instructions)
 
 # Run CLI
 ./target/release/dumptruck ingest data.csv --output results.json
@@ -101,7 +169,7 @@ cargo build --release
   --port 8443
 ```
 
-### 3. Basic Usage Examples
+### 4. Basic Usage Examples
 
 ```bash
 # Single file ingest
@@ -110,8 +178,9 @@ dumptruck ingest data.csv
 # Batch ingest with glob patterns
 dumptruck ingest "breaches/*.csv" --workers 4
 
-# Ingest with database output
-dumptruck ingest data.json --storage database --database "postgresql://user:pass@localhost/dumptruck"
+# Enable optional services
+dumptruck ingest data.json --hibp --hibp-key YOUR_API_KEY  # Breach enrichment
+dumptruck ingest data.csv --embeddings                      # Vector similarity (requires Ollama)
 
 # Generate report
 dumptruck ingest data.csv --output results.json --format json
@@ -161,16 +230,16 @@ Raw Data → Safe Ingest → Normalization → Deduplication → Enrichment → 
 
 ## Documentation
 
-| Guide | Purpose |
-|-------|---------|
-| **[Architecture Overview](docs/architecture/ARCHITECTURE.md)** | System design, components, data flow |
-| **[CLI Usage](docs/CLI_USAGE.md)** | Command-line interface and examples |
-| **[Configuration](docs/CONFIGURATION.md)** | API keys and settings reference |
-| **[Deduplication Pipeline](docs/DEDUP_ARCHITECTURE.md)** | Address canonicalization and matching strategy |
-| **[Enrichment Pipeline](docs/ENRICHMENT.md)** | HIBP and Ollama integration details |
-| **[Security Operations](docs/SECURITY_OPS.md)** | TLS, OAuth, key rotation, incident response |
-| **[Deployment Guide](docs/architecture/DEPLOYMENT.md)** | Production deployment patterns |
-| **[Contributing](CONTRIBUTING.md)** | Development guidelines and code standards |
+| Guide                                                          | Purpose                                        |
+| -------------------------------------------------------------- | ---------------------------------------------- |
+| **[Architecture Overview](docs/architecture/ARCHITECTURE.md)** | System design, components, data flow           |
+| **[CLI Usage](docs/CLI_USAGE.md)**                             | Command-line interface and examples            |
+| **[Configuration](docs/CONFIGURATION.md)**                     | API keys and settings reference                |
+| **[Deduplication Pipeline](docs/DEDUP_ARCHITECTURE.md)**       | Address canonicalization and matching strategy |
+| **[Enrichment Pipeline](docs/ENRICHMENT.md)**                  | HIBP and Ollama integration details            |
+| **[Security Operations](docs/SECURITY_OPS.md)**                | TLS, OAuth, key rotation, incident response    |
+| **[Deployment Guide](docs/architecture/DEPLOYMENT.md)**        | Production deployment patterns                 |
+| **[Contributing](CONTRIBUTING.md)**                            | Development guidelines and code standards      |
 
 ---
 

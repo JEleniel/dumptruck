@@ -1,67 +1,19 @@
-//! Enrichment plugin trait and a small example implementation.
+//! Data enrichment and intelligence
+//!
+//! This module enriches breach data with contextual intelligence:
+//! - Have I Been Pwned (HIBP) API integration for breach lookups
+//! - Ollama embeddings for similarity search and near-duplicate detection
+//! - Risk scoring based on compromise potential and historical context
+//! - Rainbow table construction for pre-hashed credential detection
 
-/// Simple enrichment plugin that derives extra fields from a row.
-pub trait EnrichmentPlugin {
-	fn enrich(&self, row: &[String]) -> Vec<String>;
-}
+pub mod enrichment;
+pub mod hibp;
+pub mod ollama;
+pub mod rainbow_table_builder;
+pub mod risk_scoring;
 
-/// Example enricher that appends a simple checksum field.
-pub struct ChecksumEnricher;
-
-impl ChecksumEnricher {
-	pub fn new() -> Self {
-		ChecksumEnricher
-	}
-}
-
-impl EnrichmentPlugin for ChecksumEnricher {
-	fn enrich(&self, row: &[String]) -> Vec<String> {
-		let mut out = row.to_vec();
-		let mut sum: u64 = 0;
-		for f in row {
-			for b in f.as_bytes() {
-				sum = sum.wrapping_add(*b as u64);
-			}
-		}
-		out.push(format!("checksum:{}", sum));
-		out
-	}
-}
-
-/// A simple, deterministic enricher used in examples and integration tests.
-pub struct SimpleEnricher;
-
-impl SimpleEnricher {
-	pub fn new() -> Self {
-		SimpleEnricher
-	}
-}
-
-impl EnrichmentPlugin for SimpleEnricher {
-	fn enrich(&self, row: &[String]) -> Vec<String> {
-		let mut out = row.to_vec();
-		out.push(format!("len:{}", row.len()));
-		let mut sum: u64 = 0;
-		for f in row {
-			for b in f.as_bytes() {
-				sum = sum.wrapping_add(*b as u64);
-			}
-		}
-		out.push(format!("checksum:{}", sum));
-		out
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn checksum_enricher_appends_field() {
-		let enr = ChecksumEnricher::new();
-		let row = vec!["alice".to_string(), "bob".to_string()];
-		let out = enr.enrich(&row);
-		assert_eq!(out.len(), 3);
-		assert!(out[2].starts_with("checksum:"));
-	}
-}
+pub use enrichment::SimpleEnricher;
+pub use hibp::HibpClient;
+pub use ollama::OllamaClient;
+pub use rainbow_table_builder::RainbowTableBuilder;
+pub use risk_scoring::RiskScore;

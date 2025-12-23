@@ -1,9 +1,10 @@
 //! Command-line interface for Dumptruck bulk data analysis.
 
+use std::path::PathBuf;
+
 use clap::{Parser, ValueEnum};
 use glob::glob;
 use rayon::prelude::*;
-use std::path::PathBuf;
 
 /// Dumptruck: Bulk data analysis tool for cyber threat identification
 #[derive(Parser, Debug)]
@@ -20,8 +21,16 @@ pub enum Commands {
 	Ingest(IngestArgs),
 	/// Show system information and connectivity
 	Status(StatusArgs),
+	/// Display database statistics and analytics
+	Stats(StatsArgs),
+	/// Export database to JSON with deduplication support
+	ExportDb(ExportDbArgs),
+	/// Import database from JSON export with deduplication
+	ImportDb(ImportDbArgs),
 	/// Start HTTP/2 server with TLS 1.3+ and OAuth authentication
 	Server(ServerArgs),
+	/// Generate rainbow table entries with SHA512 and NTLM hashes for weak passwords
+	GenerateTables(GenerateTablesArgs),
 }
 
 /// Arguments for the ingest command
@@ -36,8 +45,9 @@ pub struct IngestArgs {
 	#[arg(short, long, value_name = "FILE")]
 	pub output: Option<PathBuf>,
 
-	/// Database connection string (default: docker-compose service)
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// Use filesystem storage instead of database
@@ -81,12 +91,23 @@ pub struct IngestArgs {
 	pub output_format: OutputFormat,
 
 	/// Configuration file path (JSON format) for API keys and domain substitutions
+	/// Searched in order: ~/.config/dumptruck/config.json, /etc/dumptruck/config.json, config.json
 	#[arg(long, short = 'c', value_name = "FILE")]
 	pub config: Option<PathBuf>,
 
 	/// Number of parallel workers for processing multiple files (default: number of CPU cores)
 	#[arg(long)]
 	pub workers: Option<usize>,
+
+	/// Working directory for isolated file processing (default: /tmp/dumptruck/)
+	/// All work happens in isolated copies here; original files are never modified
+	#[arg(long, value_name = "PATH")]
+	pub working_dir: Option<PathBuf>,
+
+	/// Verify working directory is mounted with noexec flag (default: false)
+	/// Set to true to enforce strict security checking (may fail if /tmp doesn't have noexec)
+	#[arg(long, default_value = "false")]
+	pub verify_noexec: bool,
 }
 
 impl IngestArgs {
@@ -111,9 +132,8 @@ impl IngestArgs {
 		}
 
 		// Try to glob the pattern
-		let glob_results = glob(pattern).map_err(|e| {
-			format!("Invalid glob pattern '{}': {}", pattern, e)
-		})?;
+		let glob_results =
+			glob(pattern).map_err(|e| format!("Invalid glob pattern '{}': {}", pattern, e))?;
 
 		let mut files = Vec::new();
 		for entry in glob_results {
@@ -189,8 +209,9 @@ pub struct StatusArgs {
 	#[arg(long, value_name = "URL")]
 	pub ollama_url: Option<String>,
 
-	/// Database connection string
-	#[arg(long, value_name = "CONN_STRING")]
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
 	pub database: Option<String>,
 
 	/// HIBP API key
@@ -200,6 +221,85 @@ pub struct StatusArgs {
 	/// Verbosity level
 	#[arg(short, action = clap::ArgAction::Count)]
 	pub verbose: u8,
+}
+
+/// Arguments for the stats command
+#[derive(Parser, Debug)]
+pub struct StatsArgs {
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
+	pub database: Option<String>,
+
+	/// Show detailed breakdown
+	#[arg(long)]
+	pub detailed: bool,
+
+	/// Output format
+	#[arg(long, value_enum, default_value = "text")]
+	pub format: OutputFormat,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the export-db command
+#[derive(Parser, Debug)]
+pub struct ExportDbArgs {
+	/// Output file for exported database (JSON format)
+	#[arg(short, long, value_name = "FILE")]
+	pub output: PathBuf,
+
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
+	pub database: Option<String>,
+
+	/// Include detailed metadata and audit trails
+	#[arg(long)]
+	pub detailed: bool,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the import-db command
+#[derive(Parser, Debug)]
+pub struct ImportDbArgs {
+	/// Input file from database export (JSON format)
+	#[arg(short, long, value_name = "FILE")]
+	pub input: PathBuf,
+
+	/// Database path (default: ~/.local/share/dumptruck/dumptruck.db on Linux,
+	/// ~/Library/Application Support/dumptruck/dumptruck.db on macOS)
+	#[arg(long, value_name = "PATH")]
+	pub database: Option<String>,
+
+	/// Validate data integrity before import
+	#[arg(long)]
+	pub validate: bool,
+
+	/// Verbosity level
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
+}
+
+/// Arguments for the generate-tables command
+#[derive(Debug, Clone, Parser)]
+pub struct GenerateTablesArgs {
+	/// Output file for generated Rust code (default: stdout)
+	#[arg(short, long, value_name = "FILE")]
+	pub output: Option<PathBuf>,
+
+	/// Include NTLM hashes (requires proper MD4 support)
+	#[arg(long, default_value = "true")]
+	pub include_ntlm: bool,
+
+	/// Include SHA512 hashes
+	#[arg(long, default_value = "true")]
+	pub include_sha512: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -267,7 +367,8 @@ pub struct ServerArgs {
 	#[arg(short, long, value_name = "PORT", default_value = "8443")]
 	pub port: u16,
 
-	/// Path to configuration file (defaults to config.json)
+	/// Path to configuration file (JSON format)
+	/// Searched in order: ~/.config/dumptruck/config.json, /etc/dumptruck/config.json, config.json
 	#[arg(short, long, value_name = "PATH")]
 	pub config: Option<String>,
 
@@ -314,8 +415,9 @@ pub struct ServerArgs {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use clap::Parser;
+
+	use super::*;
 
 	#[test]
 	fn test_cli_parse_basic_ingest() {
@@ -408,11 +510,17 @@ mod tests {
 			output_format: OutputFormat::Json,
 			config: None,
 			workers: None,
+			working_dir: None,
+			verify_noexec: false,
 		};
 
 		let files = ingest.resolve_input_files().expect("failed to resolve");
 		assert_eq!(files.len(), 1);
-		assert!(files[0].to_string_lossy().contains("well_formed_credentials.csv"));
+		assert!(
+			files[0]
+				.to_string_lossy()
+				.contains("well_formed_credentials.csv")
+		);
 	}
 
 	#[test]
@@ -433,10 +541,16 @@ mod tests {
 			output_format: OutputFormat::Json,
 			config: None,
 			workers: None,
+			working_dir: None,
+			verify_noexec: false,
 		};
 
 		let files = ingest.resolve_input_files().expect("failed to resolve");
 		assert!(!files.is_empty());
-		assert!(files.iter().any(|f| f.to_string_lossy().contains("well_formed")));
+		assert!(
+			files
+				.iter()
+				.any(|f| f.to_string_lossy().contains("well_formed"))
+		);
 	}
 }

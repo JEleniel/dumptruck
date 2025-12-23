@@ -1,10 +1,9 @@
 use std::collections::BTreeSet;
 
-/// Integration test for AsyncPipeline with PostgreSQL storage backend
+/// Integration test for AsyncPipeline with SQLite storage backend
 use dumptruck::{
-	adapters::CsvAdapter,
-	async_pipeline::{AsyncPipeline, AsyncPipelineConfig},
-	enrichment::ChecksumEnricher,
+	ingest::adapters::CsvAdapter,
+	deploy::async_pipeline::{AsyncPipeline, AsyncPipelineConfig},
 	storage::StorageAdapter,
 };
 
@@ -68,7 +67,6 @@ charlie@test.com,pass123
 "#;
 
 	let adapter = CsvAdapter::new();
-	let enricher = ChecksumEnricher::new();
 	let storage = TestStorage::new();
 
 	let config = AsyncPipelineConfig {
@@ -77,7 +75,7 @@ charlie@test.com,pass123
 		vector_similarity_threshold: 0.85,
 	};
 
-	let pipeline = AsyncPipeline::with_config(adapter, enricher, storage, config);
+	let pipeline = AsyncPipeline::with_config(adapter, storage, config);
 	let final_storage = pipeline.ingest(csv).await.expect("ingest failed");
 
 	// Verify we have metadata and data rows
@@ -158,7 +156,6 @@ alice@example.com,pass123
 "#;
 
 	let adapter = CsvAdapter::new();
-	let enricher = ChecksumEnricher::new();
 	let storage = TestStorage::new();
 
 	let config = AsyncPipelineConfig {
@@ -167,7 +164,7 @@ alice@example.com,pass123
 		vector_similarity_threshold: 0.85,
 	};
 
-	let pipeline = AsyncPipeline::with_config(adapter, enricher, storage, config);
+	let pipeline = AsyncPipeline::with_config(adapter, storage, config);
 	let final_storage = pipeline.ingest(csv).await.expect("ingest failed");
 
 	// The second identical row should generate a __duplicate_row__ event
@@ -208,7 +205,6 @@ bob@example.org
 "#;
 
 	let adapter = CsvAdapter::new();
-	let enricher = ChecksumEnricher::new();
 	let storage = TestStorage::new();
 
 	let config = AsyncPipelineConfig {
@@ -217,7 +213,7 @@ bob@example.org
 		vector_similarity_threshold: 0.85,
 	};
 
-	let pipeline = AsyncPipeline::with_config(adapter, enricher, storage, config);
+	let pipeline = AsyncPipeline::with_config(adapter, storage, config);
 	let final_storage = pipeline.ingest(csv).await.expect("ingest failed");
 
 	// Should detect malformed row
