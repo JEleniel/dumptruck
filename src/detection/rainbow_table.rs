@@ -118,8 +118,9 @@ fn load_from_json() -> Result<Vec<WeakPasswordHash>, String> {
 		let content = std::fs::read_to_string(json_path)
 			.map_err(|e| format!("Failed to read rainbow table JSON: {}", e))?;
 
-		let table: crate::enrichment::rainbow_table_builder::RainbowTableJson = serde_json::from_str(&content)
-			.map_err(|e| format!("Failed to parse rainbow table JSON: {}", e))?;
+		let table: crate::enrichment::rainbow_table_builder::RainbowTableJson =
+			serde_json::from_str(&content)
+				.map_err(|e| format!("Failed to parse rainbow table JSON: {}", e))?;
 
 		// Convert JSON entries to WeakPasswordHash
 		let hashes: Vec<WeakPasswordHash> = table

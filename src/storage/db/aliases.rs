@@ -1,7 +1,7 @@
 //! Alias relationship tracking.
 
-use std::io;
 use rusqlite::Connection;
+use std::io;
 
 /// Insert alias relationship.
 pub fn insert_alias_relationship(

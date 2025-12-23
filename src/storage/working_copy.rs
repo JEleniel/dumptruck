@@ -296,7 +296,7 @@ impl WorkingCopyManager {
 		for entry in
 			fs::read_dir(&self.working_dir).map_err(WorkingCopyError::WorkdirInaccessible)?
 		{
-			let entry = entry.map_err(|e| WorkingCopyError::WorkdirInaccessible(e))?;
+			let entry = entry.map_err(WorkingCopyError::WorkdirInaccessible)?;
 			let path = entry.path();
 
 			if path.is_file() {

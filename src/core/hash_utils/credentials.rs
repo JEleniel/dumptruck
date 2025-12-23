@@ -26,18 +26,23 @@ pub fn is_credential_hash(cred_value: &str) -> bool {
 }
 
 fn check_salted_hash_prefix(s: &str) -> bool {
-	matches!(
-		s.chars().next(),
-		Some('$')
-	) && (s.starts_with("$2a$") || s.starts_with("$2b$") || s.starts_with("$2y$") ||
-		s.starts_with("$7$") || s.starts_with("$argon2id$") || s.starts_with("$argon2i$") ||
-		s.starts_with("$argon2d$") || s.starts_with("$pbkdf2-sha256$") ||
-		s.starts_with("$pbkdf2-sha512$"))
+	matches!(s.chars().next(), Some('$'))
+		&& (s.starts_with("$2a$")
+			|| s.starts_with("$2b$")
+			|| s.starts_with("$2y$")
+			|| s.starts_with("$7$")
+			|| s.starts_with("$argon2id$")
+			|| s.starts_with("$argon2i$")
+			|| s.starts_with("$argon2d$")
+			|| s.starts_with("$pbkdf2-sha256$")
+			|| s.starts_with("$pbkdf2-sha512$"))
 }
 
 fn check_hex_hash(s: &str) -> bool {
 	let is_hex_only = s.chars().all(|c| c.is_ascii_hexdigit());
-	let is_lowercase = s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
+	let is_lowercase = s
+		.chars()
+		.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
 
 	is_hex_only && is_lowercase && matches!(s.len(), 32 | 64 | 128)
 }

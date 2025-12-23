@@ -11,15 +11,20 @@ mod rows;
 mod schema;
 mod similarity;
 
-pub use addresses::{get_credentials_for_address, insert_address_credential_canonical,
-	insert_address_alternate, insert_canonical_address, lookup_canonical_by_alternate};
+pub use addresses::{
+	get_credentials_for_address, insert_address_alternate, insert_address_credential_canonical,
+	insert_canonical_address, lookup_canonical_by_alternate,
+};
 pub use aliases::{get_alias_relationships, insert_alias_relationship};
 pub use breaches::{get_address_neighbors, insert_address_breach, record_address_cooccurrence};
-pub use metadata::{get_anomalies_for_file, get_high_risk_anomalies, insert_anomaly_score,
-	insert_custody_record, insert_file_metadata};
+pub use metadata::{
+	get_anomalies_for_file, get_high_risk_anomalies, insert_anomaly_score, insert_custody_record,
+	insert_file_metadata,
+};
 pub use schema::create_schema;
-pub use similarity::{cosine_similarity, find_duplicate_address, find_similar_addresses,
-	update_address_embedding};
+pub use similarity::{
+	cosine_similarity, find_duplicate_address, find_similar_addresses, update_address_embedding,
+};
 
 use std::{
 	fs::{File, OpenOptions},
@@ -37,7 +42,7 @@ pub trait StorageAdapter {
 	fn address_exists(&mut self, addr_hash: &str) -> std::io::Result<bool>;
 	/// Check whether a specific credential hash is associated with an address.
 	fn address_has_credential(&mut self, addr_hash: &str, cred_hash: &str)
-		-> std::io::Result<bool>;
+	-> std::io::Result<bool>;
 	/// Record an address -> credential mapping in the history store.
 	fn add_address_credential(&mut self, addr_hash: &str, cred_hash: &str) -> std::io::Result<()>;
 
@@ -588,7 +593,12 @@ impl StorageAdapter for SqliteStorage {
 		address_text: &str,
 		normalized_form: &str,
 	) -> std::io::Result<bool> {
-		addresses::insert_canonical_address(&self.conn, canonical_hash, address_text, normalized_form)
+		addresses::insert_canonical_address(
+			&self.conn,
+			canonical_hash,
+			address_text,
+			normalized_form,
+		)
 	}
 
 	fn insert_address_alternate(
@@ -597,7 +607,12 @@ impl StorageAdapter for SqliteStorage {
 		alternate_hash: &str,
 		alternate_form: &str,
 	) -> std::io::Result<bool> {
-		addresses::insert_address_alternate(&self.conn, canonical_hash, alternate_hash, alternate_form)
+		addresses::insert_address_alternate(
+			&self.conn,
+			canonical_hash,
+			alternate_hash,
+			alternate_form,
+		)
 	}
 
 	fn lookup_canonical_by_alternate(
@@ -683,7 +698,12 @@ impl StorageAdapter for SqliteStorage {
 		embedding: Option<&[f32]>,
 		similarity_threshold: f32,
 	) -> std::io::Result<Option<String>> {
-		similarity::find_duplicate_address(&self.conn, canonical_hash, embedding, similarity_threshold)
+		similarity::find_duplicate_address(
+			&self.conn,
+			canonical_hash,
+			embedding,
+			similarity_threshold,
+		)
 	}
 
 	fn insert_address_breach(
@@ -723,7 +743,13 @@ impl StorageAdapter for SqliteStorage {
 		sha256_hash: &str,
 		file_size: i64,
 	) -> std::io::Result<bool> {
-		metadata::insert_file_metadata(&self.conn, file_id, original_filename, sha256_hash, file_size)
+		metadata::insert_file_metadata(
+			&self.conn,
+			file_id,
+			original_filename,
+			sha256_hash,
+			file_size,
+		)
 	}
 
 	fn insert_custody_record(
@@ -755,7 +781,13 @@ impl StorageAdapter for SqliteStorage {
 		alias_type: &str,
 		confidence: i32,
 	) -> std::io::Result<bool> {
-		aliases::insert_alias_relationship(&self.conn, canonical_hash, variant_hash, alias_type, confidence)
+		aliases::insert_alias_relationship(
+			&self.conn,
+			canonical_hash,
+			variant_hash,
+			alias_type,
+			confidence,
+		)
 	}
 
 	fn get_alias_relationships(

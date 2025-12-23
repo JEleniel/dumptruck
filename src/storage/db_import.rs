@@ -142,7 +142,7 @@ fn import_canonical_addresses(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -175,7 +175,7 @@ fn import_address_alternates(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -203,7 +203,7 @@ fn import_address_credentials(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -241,7 +241,7 @@ fn import_address_cooccurrence(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -281,7 +281,7 @@ fn import_address_breaches(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -319,7 +319,7 @@ fn import_file_metadata(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -359,7 +359,7 @@ fn import_chain_of_custody(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -407,7 +407,7 @@ fn import_alias_relationships(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -447,7 +447,7 @@ fn import_anomaly_scores(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
@@ -484,7 +484,7 @@ fn import_normalized_rows(
 		match result {
 			Ok(n) if n > 0 => imported += 1,
 			Ok(_) => skipped += 1,
-			Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+			Err(e) => return Err(io::Error::other(e)),
 		}
 	}
 
