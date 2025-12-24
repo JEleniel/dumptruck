@@ -77,10 +77,10 @@ pub async fn run() {
 	};
 
 	// Stop any containers that we started
-	if let Err(e) = service_manager.stop_started_containers(verbose).await {
-		if verbose >= 1 {
-			eprintln!("Warning: Failed to stop containers: {}", e);
-		}
+	if let Err(e) = service_manager.stop_started_containers(verbose).await
+		&& verbose >= 1
+	{
+		eprintln!("Warning: Failed to stop containers: {}", e);
 	}
 
 	// Exit with appropriate code

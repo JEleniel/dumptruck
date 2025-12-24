@@ -333,7 +333,7 @@ mod tests {
 		let rows = json_to_rows(&json);
 		assert_eq!(rows.len(), 1);
 		// Should have flattened keys
-		assert!(rows[0].len() > 0);
+		assert!(!rows[0].is_empty());
 	}
 
 	#[test]

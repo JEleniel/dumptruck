@@ -196,9 +196,8 @@ fn export_canonical_addresses(conn: &Connection) -> io::Result<Vec<CanonicalAddr
 	let records = stmt
 		.query_map([], |row| {
 			let embedding_json: Option<String> = row.get(3)?;
-			let embedding = embedding_json.and_then(|json_str| {
-				serde_json::from_str::<Vec<f32>>(&json_str).ok()
-			});
+			let embedding = embedding_json
+				.and_then(|json_str| serde_json::from_str::<Vec<f32>>(&json_str).ok());
 
 			Ok(CanonicalAddressRecord {
 				canonical_hash: row.get(0)?,
@@ -369,9 +368,8 @@ fn export_alias_relationships(conn: &Connection) -> io::Result<Vec<AliasRelation
 	let records = stmt
 		.query_map([], |row| {
 			let metadata_json: Option<String> = row.get(6)?;
-			let metadata = metadata_json.and_then(|json_str| {
-				serde_json::from_str::<serde_json::Value>(&json_str).ok()
-			});
+			let metadata = metadata_json
+				.and_then(|json_str| serde_json::from_str::<serde_json::Value>(&json_str).ok());
 
 			Ok(AliasRelationshipRecord {
 				canonical_value: row.get(0)?,
@@ -401,9 +399,8 @@ fn export_anomaly_scores(conn: &Connection) -> io::Result<Vec<AnomalyScoreRecord
 	let records = stmt
 		.query_map([], |row| {
 			let details_json: Option<String> = row.get(4)?;
-			let details = details_json.and_then(|json_str| {
-				serde_json::from_str::<serde_json::Value>(&json_str).ok()
-			});
+			let details = details_json
+				.and_then(|json_str| serde_json::from_str::<serde_json::Value>(&json_str).ok());
 
 			Ok(AnomalyScoreRecord {
 				file_id: row.get(0)?,
@@ -430,9 +427,8 @@ fn export_normalized_rows(conn: &Connection) -> io::Result<Vec<NormalizedRowReco
 	let records = stmt
 		.query_map([], |row| {
 			let fields_json: Option<String> = row.get(6)?;
-			let fields = fields_json.and_then(|json_str| {
-				serde_json::from_str::<serde_json::Value>(&json_str).ok()
-			});
+			let fields = fields_json
+				.and_then(|json_str| serde_json::from_str::<serde_json::Value>(&json_str).ok());
 
 			Ok(NormalizedRowRecord {
 				id: row.get(0)?,
