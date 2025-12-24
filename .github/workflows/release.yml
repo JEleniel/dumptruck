@@ -115,7 +115,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper-compat cargo dh-cargo
+          sudo apt-get install -y debhelper devscripts dh-cargo dpkg-dev
 
       - name: Set version from tag
         id: version
@@ -142,7 +142,7 @@ jobs:
 
       - name: Build Debian package
         run: |
-          DEB_BUILD_OPTIONS=nostrip dpkg-buildpackage -us -uc -b --target-arch=${{ matrix.dpkg_arch }}
+          DEB_BUILD_OPTIONS=nostrip dpkg-buildpackage -us -uc -b -d --target-arch=${{ matrix.dpkg_arch }}
 
       - name: Generate checksums
         run: |
