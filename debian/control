@@ -12,6 +12,6 @@ Package: dumptruck
 Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: High-performance bulk data analysis system
- A high-performance bulk data analysis system for threat intelligence and
- credential breach analysis. Dumptruck ingests, normalizes, and analyzes
- large data dumps with surgical precision.
+    A high-performance bulk data analysis system for threat intelligence and
+    credential breach analysis. Dumptruck ingests, normalizes, and analyzes
+    large data dumps with surgical precision.
