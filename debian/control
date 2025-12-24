@@ -1,0 +1,17 @@
+Source: dumptruck
+Section: utils
+Priority: optional
+Maintainer: Dumptruck Contributors <support@dumptruck.io>
+Build-Depends: debhelper-compat (= 13), cargo, rustc
+Standards-Version: 4.6.1
+Homepage: https://github.com/JEleniel/dumptruck
+Vcs-Browser: https://github.com/JEleniel/dumptruck
+Vcs-Git: https://github.com/JEleniel/dumptruck.git
+
+Package: dumptruck
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: High-performance bulk data analysis system
+ A high-performance bulk data analysis system for threat intelligence and
+ credential breach analysis. Dumptruck ingests, normalizes, and analyzes
+ large data dumps with surgical precision.

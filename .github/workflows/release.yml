@@ -120,7 +120,9 @@ jobs:
       - name: Set version from tag
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          # Extract version from tag like "Release-v1.0.0" to get "1.0.0"
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#Release-v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "DEB_VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
