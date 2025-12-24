@@ -335,7 +335,7 @@ fn process_rows(
 		if idx == 0 && headers.is_some() {
 			continue;
 		}
-		let detection = detection::detection::detect_row(row, headers.as_deref(), idx);
+		let detection = detection::analyzer::detect_row(row, headers.as_deref(), idx);
 		detections.push(detection);
 	}
 
@@ -346,7 +346,7 @@ fn process_rows(
 		);
 	}
 
-	let detection_stats = detection::detection::aggregate_results(&detections);
+	let detection_stats = detection::analyzer::aggregate_results(&detections);
 
 	// Track PII detections and capture detailed findings
 	let mut rows_with_pii = vec![false; detections.len()];
@@ -750,13 +750,14 @@ async fn process_jobs(
 			}
 
 			// Mark job as processing
-			if let Ok(_) = queue
+			if queue
 				.update_job(&job_id, |j| {
 					j.status = JobStatus::Processing;
 					j.started_at = Some(chrono::Utc::now());
 					Ok(())
 				})
 				.await
+				.is_ok()
 			{
 				// Process the job
 				process_single_job(&queue, &job_id, &filename, worker_id, verbose).await;
@@ -888,11 +889,9 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	}
 
 	// Load configuration file
-	let config = crate::core::config::Config::load_with_search(
-		args.config.as_ref().map(|s| s.as_str()),
-		args.verbose >= 2,
-	)
-	.map_err(|e| format!("Failed to load configuration: {}", e))?;
+	let config =
+		crate::core::config::Config::load_with_search(args.config.as_deref(), args.verbose >= 2)
+			.map_err(|e| format!("Failed to load configuration: {}", e))?;
 
 	// Get OAuth settings - CLI args override config file
 	let oauth_client_id = args
@@ -1029,29 +1028,6 @@ pub async fn server(args: ServerArgs) -> Result<(), String> {
 	}
 
 	Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_detect_format_csv() {
-		let path = Path::new("test.csv");
-		assert_eq!(detect_format_from_path(path), "csv");
-	}
-
-	#[test]
-	fn test_detect_format_json() {
-		let path = Path::new("test.json");
-		assert_eq!(detect_format_from_path(path), "json");
-	}
-
-	#[test]
-	fn test_detect_format_default() {
-		let path = Path::new("test");
-		assert_eq!(detect_format_from_path(path), "csv");
-	}
 }
 
 /// Handle the stats command
@@ -1291,5 +1267,28 @@ fn get_default_database_path() -> String {
 	} else {
 		// Fallback to current directory if dirs crate cannot determine data dir
 		"dumptruck.db".to_string()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_detect_format_csv() {
+		let path = Path::new("test.csv");
+		assert_eq!(detect_format_from_path(path), "csv");
+	}
+
+	#[test]
+	fn test_detect_format_json() {
+		let path = Path::new("test.json");
+		assert_eq!(detect_format_from_path(path), "json");
+	}
+
+	#[test]
+	fn test_detect_format_default() {
+		let path = Path::new("test");
+		assert_eq!(detect_format_from_path(path), "csv");
 	}
 }

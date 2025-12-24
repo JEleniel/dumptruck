@@ -60,12 +60,9 @@ fn check_base64_hash(s: &str) -> bool {
 		return false;
 	}
 
-	let is_all_lowercase_or_padded = s
-		.chars()
+	s.chars()
 		.all(|c| c.is_ascii_lowercase() || c == '/' || c == '+' || c == '=')
-		|| (s.len() % 4 == 0 || s.ends_with('='));
-
-	is_all_lowercase_or_padded
+		|| (s.len().is_multiple_of(4) || s.ends_with('='))
 }
 
 fn is_common_password_hash(trimmed: &str) -> bool {

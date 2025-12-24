@@ -16,11 +16,14 @@ pub use addresses::{
 	insert_canonical_address, lookup_canonical_by_alternate,
 };
 pub use aliases::{get_alias_relationships, insert_alias_relationship};
-pub use breaches::{get_address_neighbors, insert_address_breach, record_address_cooccurrence};
-pub use metadata::{
-	get_anomalies_for_file, get_high_risk_anomalies, insert_anomaly_score, insert_custody_record,
-	insert_file_metadata,
+pub use breaches::{
+	BreachRecord, get_address_neighbors, insert_address_breach, record_address_cooccurrence,
 };
+pub use metadata::{
+	CustodyRecord, get_anomalies_for_file, get_high_risk_anomalies, insert_anomaly_score,
+	insert_custody_record, insert_file_metadata,
+};
+pub use rows::RowData;
 pub use schema::create_schema;
 pub use similarity::{
 	cosine_similarity, find_duplicate_address, find_similar_addresses, update_address_embedding,
@@ -159,33 +162,8 @@ pub trait StorageAdapter {
 
 	/// Store breach data for a canonical address from HIBP API.
 	/// Returns Ok(true) if newly inserted, Ok(false) if already existed.
-	fn insert_address_breach(
-		&mut self,
-		canonical_hash: &str,
-		breach_name: &str,
-		breach_title: Option<&str>,
-		breach_domain: Option<&str>,
-		breach_date: Option<&str>,
-		pwn_count: Option<i32>,
-		description: Option<&str>,
-		is_verified: bool,
-		is_fabricated: bool,
-		is_sensitive: bool,
-		is_retired: bool,
-	) -> std::io::Result<bool> {
-		let _ = (
-			canonical_hash,
-			breach_name,
-			breach_title,
-			breach_domain,
-			breach_date,
-			pwn_count,
-			description,
-			is_verified,
-			is_fabricated,
-			is_sensitive,
-			is_retired,
-		);
+	fn insert_address_breach(&mut self, record: &BreachRecord<'_>) -> std::io::Result<bool> {
+		let _ = record;
 		Ok(false)
 	}
 
@@ -206,27 +184,7 @@ pub trait StorageAdapter {
 
 	/// Insert chain of custody record (Stage 4: Chain of Custody)
 	/// Stores cryptographically signed audit trail entry
-	fn insert_custody_record(
-		&mut self,
-		file_id: &str,
-		record_id: &str,
-		custody_action: &str,
-		operator: &str,
-		file_hash: &str,
-		signature: &[u8],
-		public_key: &[u8],
-	) -> std::io::Result<bool> {
-		let _ = (
-			file_id,
-			record_id,
-			custody_action,
-			operator,
-			file_hash,
-			signature,
-			public_key,
-		);
-		Ok(false)
-	}
+	fn insert_custody_record(&mut self, record: &CustodyRecord<'_>) -> std::io::Result<bool>;
 
 	/// Insert alias relationship (Stage 8: Alias Resolution)
 	/// Links related entries across multiple identity formats
@@ -294,8 +252,7 @@ pub struct SqliteStorage {
 
 impl SqliteStorage {
 	pub fn new(db_path: &str, dataset: Option<String>) -> std::io::Result<Self> {
-		let conn =
-			Connection::open(db_path).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let conn = Connection::open(db_path).map_err(io::Error::other)?;
 
 		// Create schema if not exists
 		schema::create_schema(&conn)?;
@@ -427,16 +384,7 @@ impl StorageAdapter for FsStorage {
 		Ok(false)
 	}
 
-	fn insert_custody_record(
-		&mut self,
-		_file_id: &str,
-		_record_id: &str,
-		_custody_action: &str,
-		_operator: &str,
-		_file_hash: &str,
-		_signature: &[u8],
-		_public_key: &[u8],
-	) -> std::io::Result<bool> {
+	fn insert_custody_record(&mut self, _record: &CustodyRecord<'_>) -> std::io::Result<bool> {
 		// Filesystem storage doesn't track custody; return false (not inserted)
 		Ok(false)
 	}
@@ -487,22 +435,22 @@ impl StorageAdapter for FsStorage {
 
 impl StorageAdapter for SqliteStorage {
 	fn store_row(&mut self, row: &[String]) -> std::io::Result<()> {
-		let (event_type, address_hash, credential_hash, row_hash, file_id) =
-			rows::parse_event_and_columns(row);
+		let parsed = rows::parse_event_and_columns(row);
 		let source_file = extract_source_file(row);
 		let fields_text = rows::build_fields_json(row)?;
 
-		rows::store_row(
-			&self.conn,
-			self.dataset.as_deref(),
-			&event_type,
-			&address_hash,
-			&credential_hash,
-			&row_hash,
-			&file_id,
-			&source_file,
-			&fields_text,
-		)
+		let data = RowData {
+			dataset: self.dataset.as_deref(),
+			event_type: &parsed.event_type,
+			address_hash: &parsed.address_hash,
+			credential_hash: &parsed.credential_hash,
+			row_hash: &parsed.row_hash,
+			file_id: &parsed.file_id,
+			source_file: &source_file,
+			fields_text: &fields_text,
+		};
+
+		rows::store_row(&self.conn, &data)
 	}
 
 	fn contains_hash(&mut self, hash: &str) -> std::io::Result<bool> {
@@ -513,10 +461,10 @@ impl StorageAdapter for SqliteStorage {
 				"SELECT COUNT(*) FROM normalized_rows WHERE credential_hash = ?1 OR address_hash \
 				 = ?1",
 			)
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		let count: i64 = stmt
 			.query_row(rusqlite::params![hash], |row| row.get(0))
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		if count > 0 {
 			return Ok(true);
 		}
@@ -525,10 +473,10 @@ impl StorageAdapter for SqliteStorage {
 		let mut stmt2 = self
 			.conn
 			.prepare("SELECT COUNT(*) FROM normalized_rows WHERE fields LIKE ?1")
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		let count2: i64 = stmt2
 			.query_row(rusqlite::params![&pattern], |row| row.get(0))
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		Ok(count2 > 0)
 	}
 
@@ -536,10 +484,10 @@ impl StorageAdapter for SqliteStorage {
 		let mut stmt = self
 			.conn
 			.prepare("SELECT COUNT(*) FROM normalized_rows WHERE address_hash = ?1")
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		let count: i64 = stmt
 			.query_row(rusqlite::params![addr_hash], |row| row.get(0))
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		Ok(count > 0)
 	}
 
@@ -554,10 +502,10 @@ impl StorageAdapter for SqliteStorage {
 				"SELECT COUNT(*) FROM normalized_rows WHERE address_hash = ?1 AND credential_hash \
 				 = ?2",
 			)
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		let count: i64 = stmt
 			.query_row(rusqlite::params![addr_hash, cred_hash], |row| row.get(0))
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		Ok(count > 0)
 	}
 
@@ -568,8 +516,7 @@ impl StorageAdapter for SqliteStorage {
 			serde_json::Value::String(addr_hash.to_string()),
 			serde_json::Value::String(cred_hash.to_string()),
 		]);
-		let fields_text =
-			serde_json::to_string(&fields).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let fields_text = serde_json::to_string(&fields).map_err(io::Error::other)?;
 		self.conn
 			.execute(
 				"INSERT INTO normalized_rows (dataset, event_type, address_hash, credential_hash, \
@@ -583,7 +530,7 @@ impl StorageAdapter for SqliteStorage {
 					&fields_text,
 				],
 			)
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		Ok(())
 	}
 
@@ -664,14 +611,14 @@ impl StorageAdapter for SqliteStorage {
 				 WHERE canonical_hash_1 = ?1 OR canonical_hash_2 = ?1 ORDER BY cooccurrence_count \
 				 DESC",
 			)
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		let neighbors = stmt
 			.query_map(rusqlite::params![canonical_hash], |row| {
 				Ok((row.get::<_, String>(0)?, row.get::<_, i32>(1)?))
 			})
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+			.map_err(io::Error::other)?
 			.collect::<Result<Vec<_>, _>>()
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+			.map_err(io::Error::other)?;
 		Ok(neighbors)
 	}
 
@@ -706,34 +653,8 @@ impl StorageAdapter for SqliteStorage {
 		)
 	}
 
-	fn insert_address_breach(
-		&mut self,
-		canonical_hash: &str,
-		breach_name: &str,
-		breach_title: Option<&str>,
-		breach_domain: Option<&str>,
-		breach_date: Option<&str>,
-		pwn_count: Option<i32>,
-		description: Option<&str>,
-		is_verified: bool,
-		is_fabricated: bool,
-		is_sensitive: bool,
-		is_retired: bool,
-	) -> std::io::Result<bool> {
-		breaches::insert_address_breach(
-			&self.conn,
-			canonical_hash,
-			breach_name,
-			breach_title,
-			breach_domain,
-			breach_date,
-			pwn_count,
-			description,
-			is_verified,
-			is_fabricated,
-			is_sensitive,
-			is_retired,
-		)
+	fn insert_address_breach(&mut self, record: &BreachRecord<'_>) -> std::io::Result<bool> {
+		breaches::insert_address_breach(&self.conn, record)
 	}
 
 	fn insert_file_metadata(
@@ -752,26 +673,8 @@ impl StorageAdapter for SqliteStorage {
 		)
 	}
 
-	fn insert_custody_record(
-		&mut self,
-		file_id: &str,
-		record_id: &str,
-		custody_action: &str,
-		operator: &str,
-		file_hash: &str,
-		signature: &[u8],
-		public_key: &[u8],
-	) -> std::io::Result<bool> {
-		metadata::insert_custody_record(
-			&self.conn,
-			file_id,
-			record_id,
-			custody_action,
-			operator,
-			file_hash,
-			signature,
-			public_key,
-		)
+	fn insert_custody_record(&mut self, record: &CustodyRecord<'_>) -> std::io::Result<bool> {
+		metadata::insert_custody_record(&self.conn, record)
 	}
 
 	fn insert_alias_relationship(
@@ -822,8 +725,8 @@ impl StorageAdapter for SqliteStorage {
 /// Extract source_file from row if present.
 fn extract_source_file(row: &[String]) -> Option<String> {
 	for f in row {
-		if f.starts_with("source_file:") {
-			return Some(f[12..].to_string());
+		if let Some(stripped) = f.strip_prefix("source_file:") {
+			return Some(stripped.to_string());
 		}
 	}
 	None

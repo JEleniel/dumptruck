@@ -150,7 +150,7 @@ fn load_from_json() -> Result<Vec<WeakPasswordHash>, String> {
 
 /// Get or initialize the rainbow table.
 fn get_rainbow_table() -> &'static Vec<WeakPasswordHash> {
-	RAINBOW_TABLE.get_or_init(|| Vec::new())
+	RAINBOW_TABLE.get_or_init(Vec::new)
 }
 
 /// Build an efficient lookup set of all weak password hashes.

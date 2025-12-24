@@ -34,7 +34,7 @@ pub fn update_address_embedding(
 		"UPDATE canonical_addresses SET embedding = ?1 WHERE canonical_hash = ?2",
 		rusqlite::params![&embedding_json, canonical_hash],
 	)
-	.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+	.map_err(io::Error::other)?;
 
 	Ok(())
 }
@@ -50,24 +50,23 @@ pub fn find_similar_addresses(
 		.prepare(
 			"SELECT canonical_hash, embedding FROM canonical_addresses WHERE embedding IS NOT NULL",
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	let rows = stmt
 		.query_map([], |row| {
 			Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
 		})
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	let mut results = Vec::new();
 	for row_result in rows {
-		let (hash, emb_json) = row_result.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		let (hash, emb_json) = row_result.map_err(io::Error::other)?;
 
-		if let Ok(stored_emb) = serde_json::from_str::<Vec<f32>>(&emb_json) {
-			if let Some(similarity) = cosine_similarity(embedding, &stored_emb) {
-				if similarity >= threshold {
-					results.push((hash, similarity));
-				}
-			}
+		if let Ok(stored_emb) = serde_json::from_str::<Vec<f32>>(&emb_json)
+			&& let Some(similarity) = cosine_similarity(embedding, &stored_emb)
+			&& similarity >= threshold
+		{
+			results.push((hash, similarity));
 		}
 	}
 
@@ -85,20 +84,19 @@ pub fn find_duplicate_address(
 ) -> io::Result<Option<String>> {
 	let mut stmt = conn
 		.prepare("SELECT canonical_hash FROM canonical_addresses WHERE canonical_hash = ?1")
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	match stmt.query_row(rusqlite::params![canonical_hash], |_| Ok(())) {
 		Ok(()) => return Ok(Some(canonical_hash.to_string())),
 		Err(rusqlite::Error::QueryReturnedNoRows) => {}
-		Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+		Err(e) => return Err(io::Error::other(e)),
 	}
 
-	if let Some(emb) = embedding {
-		if let Ok(results) = find_similar_addresses(conn, emb, 1, threshold) {
-			if let Some((hash, _)) = results.first() {
-				return Ok(Some(hash.clone()));
-			}
-		}
+	if let Some(emb) = embedding
+		&& let Ok(results) = find_similar_addresses(conn, emb, 1, threshold)
+		&& let Some((hash, _)) = results.first()
+	{
+		return Ok(Some(hash.clone()));
 	}
 
 	Ok(None)

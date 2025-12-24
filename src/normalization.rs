@@ -7,7 +7,8 @@
 //! - Evidence preservation and file tracking
 
 pub mod alias_resolution;
+pub mod engine;
 pub mod evidence;
-pub mod normalization;
 
-pub use normalization::{normalize_field, normalize_row};
+pub use alias_resolution::normalize_phone_e164;
+pub use engine::{normalize_field, normalize_row};
