@@ -49,6 +49,13 @@ jobs:
 
       - run: cargo build --release --target ${{ matrix.target }} --verbose
 
+      - name: Package Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          zip -r dumptruck-linux.zip dumptruck
+          mv dumptruck-linux.zip ../../../
+
       - name: Package macOS
         if: matrix.os == 'macos-latest'
         run: |
