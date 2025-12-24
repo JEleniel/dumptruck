@@ -58,11 +58,12 @@ jobs:
 
       - name: Package Windows
         if: matrix.os == 'windows-latest'
-        shell: bash
+        shell: powershell
         run: |
-          cd target/${{ matrix.target }}/release
-          zip -r dumptruck-windows.zip dumptruck.exe
-          mv dumptruck-windows.zip ../../../
+          $SourcePath = "target\${{ matrix.target }}\release\dumptruck.exe"
+          $DestZip = "dumptruck-windows.zip"
+          Compress-Archive -Path $SourcePath -DestinationPath $DestZip
+          Move-Item $DestZip . -Force
 
       - name: Generate checksums
         run: |
