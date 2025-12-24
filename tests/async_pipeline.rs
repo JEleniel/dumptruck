@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 /// Integration test for AsyncPipeline with SQLite storage backend
 use dumptruck::{
-	ingest::adapters::CsvAdapter,
 	deploy::async_pipeline::{AsyncPipeline, AsyncPipelineConfig},
+	ingest::adapters::CsvAdapter,
 	storage::StorageAdapter,
 };
 
