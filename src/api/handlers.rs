@@ -823,14 +823,17 @@ async fn process_single_job(
 	}
 }
 
-/// Set up signal handlers for graceful shutdown (SIGTERM, SIGINT)
+/// Set up signal handlers for graceful shutdown (SIGTERM, SIGINT on Unix; Ctrl-C on Windows)
 fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<()>, String> {
 	let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
 	let tx = shutdown_tx.clone();
 
 	tokio::spawn(async move {
-		let mut sigterm =
-			match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+		#[cfg(unix)]
+		{
+			use tokio::signal::unix::{SignalKind, signal};
+
+			let mut sigterm = match signal(SignalKind::terminate()) {
 				Ok(sig) => sig,
 				Err(e) => {
 					if verbose >= 1 {
@@ -840,8 +843,7 @@ fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<(
 				}
 			};
 
-		let mut sigint =
-			match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+			let mut sigint = match signal(SignalKind::interrupt()) {
 				Ok(sig) => sig,
 				Err(e) => {
 					if verbose >= 1 {
@@ -851,18 +853,36 @@ fn setup_signal_handler(verbose: u32) -> Result<tokio::sync::broadcast::Sender<(
 				}
 			};
 
-		tokio::select! {
-			_ = sigterm.recv() => {
-				if verbose >= 1 {
-					eprintln!("[INFO] SIGTERM received");
+			tokio::select! {
+				_ = sigterm.recv() => {
+					if verbose >= 1 {
+						eprintln!("[INFO] SIGTERM received");
+					}
+					let _ = tx.send(());
 				}
-				let _ = tx.send(());
+				_ = sigint.recv() => {
+					if verbose >= 1 {
+						eprintln!("[INFO] SIGINT received");
+					}
+					let _ = tx.send(());
+				}
 			}
-			_ = sigint.recv() => {
-				if verbose >= 1 {
-					eprintln!("[INFO] SIGINT received");
+		}
+
+		#[cfg(windows)]
+		{
+			match tokio::signal::ctrl_c().await {
+				Ok(()) => {
+					if verbose >= 1 {
+						eprintln!("[INFO] Ctrl-C received");
+					}
+					let _ = tx.send(());
 				}
-				let _ = tx.send(());
+				Err(e) => {
+					if verbose >= 1 {
+						eprintln!("[WARN] Failed to setup Ctrl-C handler: {}", e);
+					}
+				}
 			}
 		}
 	});

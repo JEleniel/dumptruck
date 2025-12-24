@@ -328,13 +328,13 @@ mod tests {
 	#[test]
 	fn test_builder_configuration() {
 		let builder = RainbowTableBuilder::new()
-			.with_output_path("/tmp/test.json".to_string())
-			.with_data_dir("/tmp/data".to_string())
+			.with_output_path("test.json".to_string())
+			.with_data_dir("data".to_string())
 			.without_ntlm()
 			.without_sha512();
 
-		assert_eq!(builder.output_path, "/tmp/test.json");
-		assert_eq!(builder.data_dir, "/tmp/data");
+		assert_eq!(builder.output_path, "test.json");
+		assert_eq!(builder.data_dir, "data");
 		assert!(!builder.include_ntlm);
 		assert!(!builder.include_sha512);
 	}

@@ -124,54 +124,64 @@ impl WorkingCopyManager {
 	/// On systems without noexec support or where execution is not prevented,
 	/// this will return an error.
 	fn verify_noexec_mount(&self) -> Result<(), WorkingCopyError> {
-		let test_file = self.working_dir.join(".noexec_check");
-
-		// Try to write a test file
-		let script_content = "#!/bin/sh\nexit 0";
-		fs::write(&test_file, script_content).map_err(|e| {
-			WorkingCopyError::NoExecCheckFailed(format!("Failed to write test file: {}", e))
-		})?;
-
-		// Try to set execute permissions (will fail or be ignored on noexec mount)
+		// NoExec verification is only meaningful on Unix systems
 		#[cfg(unix)]
 		{
+			let test_file = self.working_dir.join(".noexec_check");
+
+			// Try to write a test file
+			let script_content = "#!/bin/sh\nexit 0";
+			fs::write(&test_file, script_content).map_err(|e| {
+				WorkingCopyError::NoExecCheckFailed(format!("Failed to write test file: {}", e))
+			})?;
+
+			// Try to set execute permissions (will fail or be ignored on noexec mount)
 			use std::os::unix::fs::PermissionsExt;
 			let perms = fs::Permissions::from_mode(0o755);
 			fs::set_permissions(&test_file, perms).map_err(|e| {
 				WorkingCopyError::NoExecCheckFailed(format!("Failed to set permissions: {}", e))
 			})?;
+
+			// Try to execute the test file (should fail on noexec mount)
+			let output = std::process::Command::new(&test_file).output();
+
+			// Clean up test file
+			let _ = fs::remove_file(&test_file);
+
+			// On a noexec mount, execution should fail with permission denied
+			match output {
+				Ok(_status) => {
+					// If execution succeeded, noexec is not enabled
+					Err(WorkingCopyError::NotNoExec(
+						"Test file executed successfully - noexec is not enabled".to_string(),
+					))
+				}
+				Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+					// This is what we want - execution denied
+					if self.verbose >= 2 {
+						eprintln!("[DEBUG] Working directory verified as noexec");
+					}
+					Ok(())
+				}
+				Err(e) => {
+					// Some other error - might be acceptable depending on context
+					if self.verbose >= 2 {
+						eprintln!("[DEBUG] NoExec check returned: {:?}", e);
+					}
+					// For now, treat this as success since execution didn't happen
+					// (might be file not found, etc. which is still safe)
+					Ok(())
+				}
+			}
 		}
 
-		// Try to execute the test file (should fail on noexec mount)
-		let output = std::process::Command::new(&test_file).output();
-
-		// Clean up test file
-		let _ = fs::remove_file(&test_file);
-
-		// On a noexec mount, execution should fail with permission denied
-		match output {
-			Ok(_status) => {
-				// If execution succeeded, noexec is not enabled
-				Err(WorkingCopyError::NotNoExec(
-					"Test file executed successfully - noexec is not enabled".to_string(),
-				))
+		// On non-Unix systems (Windows), skip noexec verification
+		#[cfg(not(unix))]
+		{
+			if self.verbose >= 2 {
+				eprintln!("[DEBUG] NoExec verification not available on this platform");
 			}
-			Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
-				// This is what we want - execution denied
-				if self.verbose >= 2 {
-					eprintln!("[DEBUG] Working directory verified as noexec");
-				}
-				Ok(())
-			}
-			Err(e) => {
-				// Some other error - might be acceptable depending on context
-				if self.verbose >= 2 {
-					eprintln!("[DEBUG] NoExec check returned: {:?}", e);
-				}
-				// For now, treat this as success since execution didn't happen
-				// (might be file not found, etc. which is still safe)
-				Ok(())
-			}
+			Ok(())
 		}
 	}
 
