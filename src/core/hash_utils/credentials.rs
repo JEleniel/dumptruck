@@ -60,10 +60,7 @@ fn check_base64_hash(s: &str) -> bool {
 		return false;
 	}
 
-	
-
-	s
-		.chars()
+	s.chars()
 		.all(|c| c.is_ascii_lowercase() || c == '/' || c == '+' || c == '=')
 		|| (s.len().is_multiple_of(4) || s.ends_with('='))
 }

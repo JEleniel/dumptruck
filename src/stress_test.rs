@@ -121,14 +121,15 @@ fn load_test_fixtures() -> Vec<(String, Vec<u8>)> {
 		for entry in entries.flatten() {
 			let path = entry.path();
 			if path.is_file()
-				&& let Ok(content) = std::fs::read(&path) {
-					let filename = path
-						.file_name()
-						.and_then(|n| n.to_str())
-						.unwrap_or("unknown")
-						.to_string();
-					fixtures.push((filename, content));
-				}
+				&& let Ok(content) = std::fs::read(&path)
+			{
+				let filename = path
+					.file_name()
+					.and_then(|n| n.to_str())
+					.unwrap_or("unknown")
+					.to_string();
+				fixtures.push((filename, content));
+			}
 		}
 	}
 
@@ -248,8 +249,8 @@ async fn run_stress_test(config: Config) -> Result<(), Box<dyn std::error::Error
 			&& let Ok(_) = tokio::select! {
 				result = handles.remove(0) => result,
 			} {
-				// Handle completed task
-			}
+			// Handle completed task
+		}
 
 		let (filename, _content) = fixture_cycle.next().unwrap();
 		let filename = filename.clone();

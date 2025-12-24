@@ -84,9 +84,10 @@ impl OAuthProvider {
 				// Refresh if expiring within 1 minute
 				if let Some(refresh_time) =
 					token.expires_at.checked_sub_signed(Duration::minutes(1))
-					&& Utc::now() < refresh_time {
-						return Ok(token.token.clone());
-					}
+					&& Utc::now() < refresh_time
+				{
+					return Ok(token.token.clone());
+				}
 			}
 		}
 

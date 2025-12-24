@@ -64,9 +64,10 @@ pub fn find_similar_addresses(
 
 		if let Ok(stored_emb) = serde_json::from_str::<Vec<f32>>(&emb_json)
 			&& let Some(similarity) = cosine_similarity(embedding, &stored_emb)
-				&& similarity >= threshold {
-					results.push((hash, similarity));
-				}
+			&& similarity >= threshold
+		{
+			results.push((hash, similarity));
+		}
 	}
 
 	results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -93,9 +94,10 @@ pub fn find_duplicate_address(
 
 	if let Some(emb) = embedding
 		&& let Ok(results) = find_similar_addresses(conn, emb, 1, threshold)
-			&& let Some((hash, _)) = results.first() {
-				return Ok(Some(hash.clone()));
-			}
+		&& let Some((hash, _)) = results.first()
+	{
+		return Ok(Some(hash.clone()));
+	}
 
 	Ok(None)
 }

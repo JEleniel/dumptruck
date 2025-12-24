@@ -259,12 +259,13 @@ impl Config {
 
 		// 5. App working directory
 		if let Ok(exe_path) = std::env::current_exe()
-			&& let Some(dir) = exe_path.parent() {
-				let app_config = dir.join("config.json");
-				if let Some(path_str) = app_config.to_str() {
-					paths.push(path_str.to_string());
-				}
+			&& let Some(dir) = exe_path.parent()
+		{
+			let app_config = dir.join("config.json");
+			if let Some(path_str) = app_config.to_str() {
+				paths.push(path_str.to_string());
 			}
+		}
 
 		paths
 	}

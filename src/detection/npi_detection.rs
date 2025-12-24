@@ -525,14 +525,16 @@ fn validate_credit_card_network(digits: &str) -> bool {
 	// Mastercard: 51-55 or 2221-2720, length 16
 	if len == 16 {
 		if let Ok(first_two_num) = first_two.parse::<u32>()
-			&& (51..=55).contains(&first_two_num) {
-				return true;
-			}
+			&& (51..=55).contains(&first_two_num)
+		{
+			return true;
+		}
 		// 2221-2720 range
 		if let Ok(first_four_num) = first_four.parse::<u32>()
-			&& (2221..=2720).contains(&first_four_num) {
-				return true;
-			}
+			&& (2221..=2720).contains(&first_four_num)
+		{
+			return true;
+		}
 	}
 
 	// American Express: 34 or 37, length 15
@@ -546,13 +548,15 @@ fn validate_credit_card_network(digits: &str) -> bool {
 			return true;
 		}
 		if let Ok(first_six_num) = first_six.parse::<u32>()
-			&& (622126..=622925).contains(&first_six_num) {
-				return true;
-			}
+			&& (622126..=622925).contains(&first_six_num)
+		{
+			return true;
+		}
 		if let Ok(first_three) = first_two.parse::<u32>()
-			&& (644..=649).contains(&first_three) {
-				return true;
-			}
+			&& (644..=649).contains(&first_three)
+		{
+			return true;
+		}
 		if first_digit == '6' && first_two == "65" {
 			return true;
 		}
@@ -561,16 +565,18 @@ fn validate_credit_card_network(digits: &str) -> bool {
 	// JCB: 3528-3589, length 16-19
 	if (16..=19).contains(&len)
 		&& let Ok(first_four_num) = first_four.parse::<u32>()
-			&& (3528..=3589).contains(&first_four_num) {
-				return true;
-			}
+		&& (3528..=3589).contains(&first_four_num)
+	{
+		return true;
+	}
 
 	// Diners Club: 300-305, 36, 38, 39, length 14
 	if len == 14 {
 		if let Ok(first_three) = first_two.parse::<u32>()
-			&& (300..=305).contains(&first_three) {
-				return true;
-			}
+			&& (300..=305).contains(&first_three)
+		{
+			return true;
+		}
 		if first_two == "36" || first_two == "38" || first_two == "39" {
 			return true;
 		}
@@ -758,20 +764,21 @@ fn is_crypto_address(value: &str) -> bool {
 	let trimmed = value.trim();
 
 	// Bitcoin addresses: 26-35 chars, start with 1, 3, or bc1, alphanumeric (no 0, O, I, l)
-	if trimmed.len() >= 26 && trimmed.len() <= 62
-		&& (trimmed.starts_with('1') || trimmed.starts_with('3') || trimmed.starts_with("bc1")) {
-			// For bc1 addresses, allow lowercase letters and digits
-			if trimmed.starts_with("bc1") {
-				return trimmed.chars().skip(3).all(|c| {
-					c.is_ascii_digit()
-						|| (c.is_ascii_lowercase() && c != 'b' && c != 'i' && c != 'o')
-				});
-			}
-			// For legacy addresses, don't allow 0, O, I, l
-			return trimmed.chars().all(|c| {
-				c.is_ascii_alphanumeric() && c != '0' && c != 'O' && c != 'I' && c != 'l'
+	if trimmed.len() >= 26
+		&& trimmed.len() <= 62
+		&& (trimmed.starts_with('1') || trimmed.starts_with('3') || trimmed.starts_with("bc1"))
+	{
+		// For bc1 addresses, allow lowercase letters and digits
+		if trimmed.starts_with("bc1") {
+			return trimmed.chars().skip(3).all(|c| {
+				c.is_ascii_digit() || (c.is_ascii_lowercase() && c != 'b' && c != 'i' && c != 'o')
 			});
 		}
+		// For legacy addresses, don't allow 0, O, I, l
+		return trimmed
+			.chars()
+			.all(|c| c.is_ascii_alphanumeric() && c != '0' && c != 'O' && c != 'I' && c != 'l');
+	}
 
 	// Ethereum addresses: 42 chars, start with 0x, hex only
 	if trimmed.len() == 42 && trimmed.starts_with("0x") {
@@ -804,24 +811,25 @@ fn is_digital_wallet_token(value: &str) -> bool {
 	}
 
 	// PayPal merchant ID: uppercase hex, 12-16 chars
-	if trimmed.len() >= 12 && trimmed.len() <= 16
+	if trimmed.len() >= 12
+		&& trimmed.len() <= 16
 		&& trimmed
 			.chars()
 			.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
-		{
-			// Likely PayPal merchant ID if all uppercase alphanumeric
-			return true;
-		}
+	{
+		// Likely PayPal merchant ID if all uppercase alphanumeric
+		return true;
+	}
 
 	// Apple Pay / Google Pay tokens: long alphanumeric with underscores
 	if trimmed.len() >= 16
 		&& trimmed
 			.chars()
 			.all(|c| c.is_ascii_alphanumeric() || c == '_')
-			&& trimmed.len() <= 64
-		{
-			return true;
-		}
+		&& trimmed.len() <= 64
+	{
+		return true;
+	}
 
 	false
 }

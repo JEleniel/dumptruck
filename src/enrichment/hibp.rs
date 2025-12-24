@@ -113,9 +113,7 @@ impl HibpClient {
 			reqwest::StatusCode::TOO_MANY_REQUESTS => Err(io::Error::other(
 				"HIBP API rate limit exceeded; retry after delay",
 			)),
-			status => Err(io::Error::other(
-				format!("HIBP API error: {}", status),
-			)),
+			status => Err(io::Error::other(format!("HIBP API error: {}", status))),
 		}
 	}
 

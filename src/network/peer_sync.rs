@@ -61,7 +61,7 @@ impl BloomFilter {
 		let mut hasher = DefaultHasher::new();
 		item.hash(&mut hasher);
 		seed.hash(&mut hasher);
-		
+
 		hasher.finish() as usize
 	}
 

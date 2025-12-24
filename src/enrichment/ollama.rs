@@ -64,9 +64,10 @@ impl OllamaClient {
 			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		if !resp.status().is_success() {
-			return Err(io::Error::other(
-				format!("Ollama API error: {}", resp.status()),
-			));
+			return Err(io::Error::other(format!(
+				"Ollama API error: {}",
+				resp.status()
+			)));
 		}
 
 		let body = resp
@@ -103,9 +104,10 @@ impl OllamaClient {
 			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		if !resp.status().is_success() {
-			return Err(io::Error::other(
-				format!("Failed to pull Nomic model: {}", resp.status()),
-			));
+			return Err(io::Error::other(format!(
+				"Failed to pull Nomic model: {}",
+				resp.status()
+			)));
 		}
 
 		Ok(())

@@ -162,10 +162,11 @@ impl RainbowTableBuilder {
 
 			if path.extension().map(|e| e == "txt").unwrap_or(false)
 				&& let Some(filename) = path.file_name()
-					&& let Some(filename_str) = filename.to_str() {
-						let sig = Self::compute_file_signature(path.to_str().unwrap())?;
-						new_signatures.insert(filename_str.to_string(), sig);
-					}
+				&& let Some(filename_str) = filename.to_str()
+			{
+				let sig = Self::compute_file_signature(path.to_str().unwrap())?;
+				new_signatures.insert(filename_str.to_string(), sig);
+			}
 		}
 
 		// Check if signatures differ
@@ -219,10 +220,11 @@ impl RainbowTableBuilder {
 
 				if path.extension().map(|e| e == "txt").unwrap_or(false)
 					&& let Some(filename) = path.file_name()
-						&& let Some(filename_str) = filename.to_str() {
-							let sig = Self::compute_file_signature(path.to_str().unwrap())?;
-							file_signatures.insert(filename_str.to_string(), sig);
-						}
+					&& let Some(filename_str) = filename.to_str()
+				{
+					let sig = Self::compute_file_signature(path.to_str().unwrap())?;
+					file_signatures.insert(filename_str.to_string(), sig);
+				}
 			}
 		}
 
@@ -246,9 +248,10 @@ impl RainbowTableBuilder {
 
 		// Ensure output directory exists
 		if let Some(parent) = Path::new(&self.output_path).parent()
-			&& !parent.as_os_str().is_empty() {
-				fs::create_dir_all(parent)?;
-			}
+			&& !parent.as_os_str().is_empty()
+		{
+			fs::create_dir_all(parent)?;
+		}
 
 		// Write to file
 		let json = serde_json::to_string_pretty(&table)?;

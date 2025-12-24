@@ -189,9 +189,7 @@ pub fn export_database(conn: &Connection) -> io::Result<DatabaseExport> {
 
 fn export_canonical_addresses(conn: &Connection) -> io::Result<Vec<CanonicalAddressRecord>> {
 	let query = "SELECT canonical_hash, address_text, normalized_form, embedding, created_at FROM canonical_addresses ORDER BY created_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -216,9 +214,7 @@ fn export_canonical_addresses(conn: &Connection) -> io::Result<Vec<CanonicalAddr
 
 fn export_address_alternates(conn: &Connection) -> io::Result<Vec<AddressAlternateRecord>> {
 	let query = "SELECT canonical_hash, alternate_hash, alternate_form, created_at FROM address_alternates ORDER BY created_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -238,9 +234,7 @@ fn export_address_alternates(conn: &Connection) -> io::Result<Vec<AddressAlterna
 
 fn export_address_credentials(conn: &Connection) -> io::Result<Vec<AddressCredentialRecord>> {
 	let query = "SELECT DISTINCT canonical_hash, credential_hash, MAX(created_at) as created_at FROM address_credentials GROUP BY canonical_hash, credential_hash ORDER BY created_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -259,9 +253,7 @@ fn export_address_credentials(conn: &Connection) -> io::Result<Vec<AddressCreden
 
 fn export_address_cooccurrence(conn: &Connection) -> io::Result<Vec<CooccurrenceRecord>> {
 	let query = "SELECT canonical_hash_1, canonical_hash_2, cooccurrence_count, first_seen, last_seen FROM address_cooccurrence ORDER BY first_seen";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -282,9 +274,7 @@ fn export_address_cooccurrence(conn: &Connection) -> io::Result<Vec<Cooccurrence
 
 fn export_address_breaches(conn: &Connection) -> io::Result<Vec<BreachRecord>> {
 	let query = "SELECT canonical_hash, breach_name, breach_date, pwned_count, created_at FROM address_breaches ORDER BY created_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -307,9 +297,7 @@ fn export_address_breaches(conn: &Connection) -> io::Result<Vec<BreachRecord>> {
 
 fn export_file_metadata(conn: &Connection) -> io::Result<Vec<FileMetadataRecord>> {
 	let query = "SELECT file_id, original_filename, sha256_hash, blake3_hash, file_size, alternate_names, processing_status, created_at FROM file_metadata ORDER BY created_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -333,9 +321,7 @@ fn export_file_metadata(conn: &Connection) -> io::Result<Vec<FileMetadataRecord>
 
 fn export_chain_of_custody(conn: &Connection) -> io::Result<Vec<ChainOfCustodyRecord>> {
 	let query = "SELECT file_id, record_id, custody_action, operator, file_hash, signature, public_key, record_count, notes, action_timestamp FROM chain_of_custody_records ORDER BY action_timestamp";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -361,9 +347,7 @@ fn export_chain_of_custody(conn: &Connection) -> io::Result<Vec<ChainOfCustodyRe
 
 fn export_alias_relationships(conn: &Connection) -> io::Result<Vec<AliasRelationshipRecord>> {
 	let query = "SELECT canonical_value, canonical_hash, variant_value, variant_hash, alias_type, confidence, metadata, discovered_at, verified_at FROM alias_relationships ORDER BY discovered_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -392,9 +376,7 @@ fn export_alias_relationships(conn: &Connection) -> io::Result<Vec<AliasRelation
 
 fn export_anomaly_scores(conn: &Connection) -> io::Result<Vec<AnomalyScoreRecord>> {
 	let query = "SELECT file_id, subject_hash, anomaly_type, risk_score, details, detected_at FROM anomaly_scores ORDER BY detected_at";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {
@@ -420,9 +402,7 @@ fn export_anomaly_scores(conn: &Connection) -> io::Result<Vec<AnomalyScoreRecord
 
 fn export_normalized_rows(conn: &Connection) -> io::Result<Vec<NormalizedRowRecord>> {
 	let query = "SELECT id, dataset, event_type, address_hash, credential_hash, file_id, fields FROM normalized_rows ORDER BY id";
-	let mut stmt = conn
-		.prepare(query)
-		.map_err(io::Error::other)?;
+	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
 		.query_map([], |row| {

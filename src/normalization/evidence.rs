@@ -95,9 +95,10 @@ impl FileEvidence {
 		let mut names = alternate_names.unwrap_or_default();
 		if let Some(filename) = path.file_name()
 			&& let Some(filename_str) = filename.to_str()
-				&& !names.contains(&filename_str.to_string()) {
-					names.push(filename_str.to_string());
-				}
+			&& !names.contains(&filename_str.to_string())
+		{
+			names.push(filename_str.to_string());
+		}
 
 		Ok(FileEvidence {
 			file_id,

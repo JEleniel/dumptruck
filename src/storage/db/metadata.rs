@@ -42,10 +42,7 @@ pub fn insert_file_metadata(
 }
 
 /// Insert chain of custody record.
-pub fn insert_custody_record(
-	conn: &Connection,
-	record: &CustodyRecord<'_>,
-) -> io::Result<bool> {
+pub fn insert_custody_record(conn: &Connection, record: &CustodyRecord<'_>) -> io::Result<bool> {
 	let rows = conn
 		.execute(
 			"INSERT OR IGNORE INTO chain_of_custody \

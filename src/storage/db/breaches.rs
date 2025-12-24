@@ -68,10 +68,7 @@ pub fn get_address_neighbors(
 }
 
 /// Insert breach data for canonical address.
-pub fn insert_address_breach(
-	conn: &Connection,
-	record: &BreachRecord<'_>,
-) -> io::Result<bool> {
+pub fn insert_address_breach(conn: &Connection, record: &BreachRecord<'_>) -> io::Result<bool> {
 	let rows = conn
 		.execute(
 			"INSERT OR IGNORE INTO address_breaches \
