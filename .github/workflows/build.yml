@@ -20,6 +20,9 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: dumptruck
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: dumptruck.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +30,16 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install Strawberry Perl
+        if: matrix.os == 'windows-latest'
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.32'
+
+      - name: Install NASM
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/setup-nasm@v1
 
       - run: cargo build --release --target ${{ matrix.target }} --verbose
 
@@ -43,3 +56,11 @@ jobs:
           cd target/${{ matrix.target }}/release
           zip -r dumptruck-macos.zip dumptruck
           mv dumptruck-macos.zip ../../../
+
+      - name: Package Windows
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          zip -r dumptruck-windows.zip dumptruck.exe
+          mv dumptruck-windows.zip ../../../
