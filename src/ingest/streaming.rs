@@ -149,7 +149,7 @@ impl StreamingJsonLinesParser {
 						serde_json::Value::Object(obj) => {
 							// Convert JSON object to flat string array
 							obj.iter()
-								.map(|(k, v)| format!("{}:{}", k, v.to_string()))
+								.map(|(k, v)| format!("{}:{}", k, v))
 								.collect()
 						}
 						serde_json::Value::Array(arr) => {
@@ -244,11 +244,10 @@ impl StreamingJsonArrayParser {
 					}
 					']' if self.in_array && self.brace_depth == 0 => {
 						// End of array
-						if !self.buffer.is_empty() {
-							if let Some(result) = self.try_parse_buffer() {
+						if !self.buffer.is_empty()
+							&& let Some(result) = self.try_parse_buffer() {
 								return result;
 							}
-						}
 						return Ok(None);
 					}
 					'{' => {
@@ -258,11 +257,10 @@ impl StreamingJsonArrayParser {
 					'}' => {
 						self.buffer.push(ch);
 						self.brace_depth -= 1;
-						if self.brace_depth == 0 && !self.buffer.is_empty() {
-							if let Some(result) = self.try_parse_buffer() {
+						if self.brace_depth == 0 && !self.buffer.is_empty()
+							&& let Some(result) = self.try_parse_buffer() {
 								return result;
 							}
-						}
 					}
 					',' if self.brace_depth == 0 && !self.buffer.is_empty() => {
 						// End of current object
@@ -279,11 +277,10 @@ impl StreamingJsonArrayParser {
 				}
 			}
 
-			if bytes_read == 0 && !self.buffer.is_empty() {
-				if let Some(result) = self.try_parse_buffer() {
+			if bytes_read == 0 && !self.buffer.is_empty()
+				&& let Some(result) = self.try_parse_buffer() {
 					return result;
 				}
-			}
 		}
 	}
 
@@ -295,7 +292,7 @@ impl StreamingJsonArrayParser {
 				let fields = match value {
 					serde_json::Value::Object(obj) => obj
 						.iter()
-						.map(|(k, v)| format!("{}:{}", k, v.to_string()))
+						.map(|(k, v)| format!("{}:{}", k, v))
 						.collect(),
 					serde_json::Value::Array(arr) => arr.iter().map(|v| v.to_string()).collect(),
 					_ => vec![value.to_string()],

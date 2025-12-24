@@ -56,7 +56,7 @@ pub fn analyze_file_safety(data: &[u8]) -> FileSafetyAnalysis {
 	}
 
 	// Check for binary content (null bytes are strong indicator - 95% confidence)
-	if data.iter().any(|&b| b == 0) {
+	if data.contains(&0) {
 		is_binary = true;
 		binary_confidence = 95.0;
 		warnings.push("File contains null bytes - binary format detected".to_string());
@@ -111,18 +111,17 @@ pub fn analyze_file_safety(data: &[u8]) -> FileSafetyAnalysis {
 	}
 
 	// Check for Mach-O magic header (0xFE 0xED 0xFA / 0xCE 0xFA = macOS binary)
-	if data.len() >= 2 {
-		if (data[0] == 0xFE && data[1] == 0xED) || (data[0] == 0xCE && data[1] == 0xFA) {
+	if data.len() >= 2
+		&& ((data[0] == 0xFE && data[1] == 0xED) || (data[0] == 0xCE && data[1] == 0xFA)) {
 			is_binary = true;
 			binary_confidence = 98.0;
 			warnings.push("File appears to be Mach-O binary (macOS)".to_string());
 			safe_to_process = false;
 		}
-	}
 
 	// Check for common text formats by looking at content patterns
-	if !is_binary && safe_to_process && data.len() > 0 {
-		if let Ok(text) = std::str::from_utf8(data) {
+	if !is_binary && safe_to_process && !data.is_empty()
+		&& let Ok(text) = std::str::from_utf8(data) {
 			// Check if it looks like structured data
 			let looks_like_csv = text.contains('\n') && (text.contains(',') || text.contains('\t'));
 			let looks_like_json = text.contains('{') || text.contains('[');
@@ -135,7 +134,6 @@ pub fn analyze_file_safety(data: &[u8]) -> FileSafetyAnalysis {
 				);
 			}
 		}
-	}
 
 	FileSafetyAnalysis {
 		is_binary,
@@ -150,7 +148,7 @@ pub fn analyze_file_safety(data: &[u8]) -> FileSafetyAnalysis {
 /// Check if a byte is likely a text byte
 fn is_text_byte(b: u8) -> bool {
 	// Printable ASCII (32-126)
-	if b >= 32 && b <= 126 {
+	if (32..=126).contains(&b) {
 		return true;
 	}
 	// Common whitespace (tab, newline, carriage return)
@@ -169,6 +167,7 @@ fn is_text_byte(b: u8) -> bool {
 /// Returns the best possible string representation:
 /// - If valid UTF-8: returns as-is
 /// - If invalid UTF-8: uses lossy conversion with replacement characters
+///
 /// Returns (string, had_errors)
 pub fn safe_string_conversion(data: &[u8], verbose: u32) -> (String, bool) {
 	match std::str::from_utf8(data) {

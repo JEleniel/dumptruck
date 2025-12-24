@@ -153,7 +153,7 @@ pub fn detect_row(row: &[String], headers: Option<&[String]>, row_index: usize) 
 		}
 
 		// Extract email addresses (look for email PII type)
-		if pii_types.iter().any(|t| *t == PiiType::Email) {
+		if pii_types.contains(&PiiType::Email) {
 			let emails = extract_emails(value);
 			result.email_addresses.extend(emails);
 		}

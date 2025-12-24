@@ -61,11 +61,10 @@ impl OllamaClient {
 			.json(&req)
 			.send()
 			.await
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		if !resp.status().is_success() {
-			return Err(io::Error::new(
-				io::ErrorKind::Other,
+			return Err(io::Error::other(
 				format!("Ollama API error: {}", resp.status()),
 			));
 		}
@@ -73,7 +72,7 @@ impl OllamaClient {
 		let body = resp
 			.text()
 			.await
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		let embed_resp: EmbedResponse = serde_json::from_str(&body)
 			.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
@@ -101,11 +100,10 @@ impl OllamaClient {
 			.json(&req)
 			.send()
 			.await
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		if !resp.status().is_success() {
-			return Err(io::Error::new(
-				io::ErrorKind::Other,
+			return Err(io::Error::other(
 				format!("Failed to pull Nomic model: {}", resp.status()),
 			));
 		}

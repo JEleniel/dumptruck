@@ -48,16 +48,16 @@ impl<A: FormatAdapter, S: StorageAdapter> Pipeline<A, S> {
 				continue;
 			}
 
-			let normalized = normalization::normalization::normalize_row(row);
+			let normalized = normalization::engine::normalize_row(row);
 
 			// Validate column count
-			if let Some(expected) = expected_columns {
-				if normalized.len() != expected {
-					let raw = row.join(",");
-					let m = vec!["__malformed_row__".to_string(), idx.to_string(), raw];
-					let _ = store_with_file(&mut storage, &m);
-					continue;
-				}
+			if let Some(expected) = expected_columns
+				&& normalized.len() != expected
+			{
+				let raw = row.join(",");
+				let m = vec!["__malformed_row__".to_string(), idx.to_string(), raw];
+				let _ = store_with_file(&mut storage, &m);
+				continue;
 			}
 
 			// Detect addresses and credentials
@@ -260,6 +260,20 @@ mod tests {
 				.insert((addr_hash.to_string(), cred_hash.to_string()));
 			Ok(())
 		}
+
+		fn insert_address_breach(
+			&mut self,
+			_record: &crate::storage::db::BreachRecord<'_>,
+		) -> std::io::Result<bool> {
+			Ok(false)
+		}
+
+		fn insert_custody_record(
+			&mut self,
+			_record: &crate::storage::db::CustodyRecord<'_>,
+		) -> std::io::Result<bool> {
+			Ok(false)
+		}
 	}
 
 	#[test]
@@ -278,7 +292,7 @@ mod tests {
 			storage
 				.rows
 				.iter()
-				.any(|r| r.get(0).map(|s| s.as_str()) == Some("__file_hash__"))
+				.any(|r| r.first().map(|s| s.as_str()) == Some("__file_hash__"))
 		);
 	}
 
@@ -302,7 +316,7 @@ mod tests {
 		// Use dynamic dispatch to create a pipeline-like flow
 		let rows = adapter.parse(csv);
 		for row in rows.iter() {
-			let normalized = normalization::normalization::normalize_row(row);
+			let normalized = normalization::engine::normalize_row(row);
 			let enriched = normalized.to_vec();
 			fs.store_row(&enriched).expect("store");
 		}
@@ -330,7 +344,7 @@ mod tests {
 			storage
 				.rows
 				.iter()
-				.any(|r| r.get(0).map(|s| s.as_str()) == Some("__file_hash__"))
+				.any(|r| r.first().map(|s| s.as_str()) == Some("__file_hash__"))
 		);
 		// We should NOT have discarded these rows since they have plaintext email addresses
 		assert!(storage.rows.len() >= 3);
@@ -352,7 +366,7 @@ mod tests {
 			storage
 				.rows
 				.iter()
-				.any(|r| { r.get(0).map(|s| s.as_str()) == Some("__hashed_credentials_only__") })
+				.any(|r| { r.first().map(|s| s.as_str()) == Some("__hashed_credentials_only__") })
 		);
 	}
 }

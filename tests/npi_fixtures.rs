@@ -1,5 +1,5 @@
-/// Test fixtures for NPI/PII detection
-/// Contains real-world examples and known formats for testing
+//! Test fixtures for NPI/PII detection
+//! Contains real-world examples and known formats for testing
 
 #[cfg(test)]
 pub mod fixtures {

@@ -23,7 +23,7 @@ impl BloomFilter {
 	/// Create a new Bloom filter with given bit size
 	/// Typical size: 1MB = 8388608 bits for ~100k items with 1% FP rate
 	pub fn new(size_bits: usize) -> Self {
-		let num_bytes = (size_bits + 7) / 8;
+		let num_bytes = size_bits.div_ceil(8);
 		Self {
 			bits: vec![0u8; num_bytes],
 			size: size_bits,
@@ -61,8 +61,8 @@ impl BloomFilter {
 		let mut hasher = DefaultHasher::new();
 		item.hash(&mut hasher);
 		seed.hash(&mut hasher);
-		let hash = hasher.finish() as usize;
-		hash
+		
+		hasher.finish() as usize
 	}
 
 	/// Get the filter as bytes for transmission

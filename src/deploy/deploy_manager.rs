@@ -66,10 +66,7 @@ impl ServiceManager {
 
 	/// Check if a service is running by attempting a TCP connection
 	async fn is_service_available(host: &str, port: u16) -> bool {
-		match tokio::net::TcpStream::connect(format!("{}:{}", host, port)).await {
-			Ok(_) => true,
-			Err(_) => false,
-		}
+		tokio::net::TcpStream::connect(format!("{}:{}", host, port)).await.is_ok()
 	}
 
 	/// Start a docker compose service from its directory
@@ -291,8 +288,7 @@ pub async fn start() -> Result<(), io::Error> {
 		match status {
 			Ok(st) if st.success() => return Ok(()),
 			Ok(st) => {
-				last_err = Some(io::Error::new(
-					io::ErrorKind::Other,
+				last_err = Some(io::Error::other(
 					format!("{} exited with {}", bin, st),
 				));
 			}
@@ -303,7 +299,7 @@ pub async fn start() -> Result<(), io::Error> {
 	}
 
 	Err(last_err
-		.unwrap_or_else(|| io::Error::new(io::ErrorKind::Other, "docker compose up failed")))
+		.unwrap_or_else(|| io::Error::other("docker compose up failed")))
 }
 
 /// Stop and remove the docker compose stack.
@@ -319,8 +315,7 @@ pub async fn stop() -> Result<(), io::Error> {
 		match status {
 			Ok(st) if st.success() => return Ok(()),
 			Ok(st) => {
-				last_err = Some(io::Error::new(
-					io::ErrorKind::Other,
+				last_err = Some(io::Error::other(
 					format!("{} exited with {}", bin, st),
 				))
 			}
@@ -329,5 +324,5 @@ pub async fn stop() -> Result<(), io::Error> {
 	}
 
 	Err(last_err
-		.unwrap_or_else(|| io::Error::new(io::ErrorKind::Other, "docker compose down failed")))
+		.unwrap_or_else(|| io::Error::other("docker compose down failed")))
 }

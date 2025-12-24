@@ -177,14 +177,14 @@ impl IngestArgs {
 				.install(|| {
 					files
 						.par_iter()
-						.map(|f| process_fn(f))
+						.map(&process_fn)
 						.collect::<Result<Vec<_>, _>>()
 				})
 		} else {
 			// Use default parallelization
 			Ok(files
 				.par_iter()
-				.map(|f| process_fn(f))
+				.map(process_fn)
 				.collect::<Result<Vec<_>, _>>()?)
 		}
 	}

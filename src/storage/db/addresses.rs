@@ -17,7 +17,7 @@ pub fn insert_canonical_address(
 			 normalized_form) VALUES (?1, ?2, ?3)",
 			rusqlite::params![canonical_hash, address_text, normalized_form],
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(rows > 0)
 }
@@ -35,7 +35,7 @@ pub fn insert_address_alternate(
 			 alternate_form) VALUES (?1, ?2, ?3)",
 			rusqlite::params![canonical_hash, alternate_hash, alternate_form],
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(rows > 0)
 }
@@ -47,11 +47,11 @@ pub fn lookup_canonical_by_alternate(
 ) -> io::Result<Option<String>> {
 	let mut stmt = conn
 		.prepare("SELECT canonical_hash FROM address_alternates WHERE alternate_hash = ?1")
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	stmt.query_row(rusqlite::params![alternate_hash], |row| row.get(0))
 		.optional()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(io::Error::other)
 }
 
 /// Insert credential association for canonical address.
@@ -66,7 +66,7 @@ pub fn insert_address_credential_canonical(
 			 (?1, ?2)",
 			rusqlite::params![canonical_hash, credential_hash],
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(rows > 0)
 }
@@ -78,13 +78,13 @@ pub fn get_credentials_for_address(
 ) -> io::Result<Vec<String>> {
 	let mut stmt = conn
 		.prepare("SELECT credential_hash FROM address_credentials WHERE canonical_hash = ?1")
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	let creds = stmt
 		.query_map(rusqlite::params![canonical_hash], |row| row.get(0))
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+		.map_err(io::Error::other)?
 		.collect::<Result<Vec<_>, _>>()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(creds)
 }

@@ -162,7 +162,7 @@ impl ChainOfCustodyRecord {
 		});
 
 		let message = serde_json::to_string(&record_to_sign)
-			.map_err(|e| ChainOfCustodyError::SerializationFailed(e))?;
+			.map_err(ChainOfCustodyError::SerializationFailed)?;
 
 		// Sign the message
 		let signature = signing_key.sign(message.as_bytes());
@@ -217,7 +217,7 @@ impl ChainOfCustodyRecord {
 		});
 
 		let message = serde_json::to_string(&record_to_verify)
-			.map_err(|e| ChainOfCustodyError::SerializationFailed(e))?;
+			.map_err(ChainOfCustodyError::SerializationFailed)?;
 
 		verifying_key
 			.verify_strict(message.as_bytes(), &signature)

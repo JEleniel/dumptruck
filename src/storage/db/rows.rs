@@ -4,16 +4,38 @@ use std::io;
 
 use rusqlite::Connection;
 
+/// Parsed event and column data from a row.
+#[derive(Debug, Clone)]
+pub struct RowData<'a> {
+	/// Optional dataset name
+	pub dataset: Option<&'a str>,
+	/// Event type if present
+	pub event_type: &'a Option<String>,
+	/// Hash of the canonical address
+	pub address_hash: &'a Option<String>,
+	/// Hash of the credential
+	pub credential_hash: &'a Option<String>,
+	/// Hash of the entire row
+	pub row_hash: &'a Option<String>,
+	/// File identifier
+	pub file_id: &'a Option<String>,
+	/// Source file name
+	pub source_file: &'a Option<String>,
+	/// Serialized field data
+	pub fields_text: &'a str,
+}
+
+/// Extracted column values from a row.
+pub struct ParsedColumns {
+	pub event_type: Option<String>,
+	pub address_hash: Option<String>,
+	pub credential_hash: Option<String>,
+	pub row_hash: Option<String>,
+	pub file_id: Option<String>,
+}
+
 /// Parse event type and extract typed columns from row data.
-pub fn parse_event_and_columns(
-	row: &[String],
-) -> (
-	Option<String>,
-	Option<String>,
-	Option<String>,
-	Option<String>,
-	Option<String>,
-) {
+pub fn parse_event_and_columns(row: &[String]) -> ParsedColumns {
 	let mut event_type = None;
 	let mut address_hash = None;
 	let mut credential_hash = None;
@@ -21,17 +43,23 @@ pub fn parse_event_and_columns(
 	let mut file_id = None;
 
 	for (i, f) in row.iter().enumerate() {
-		if f.starts_with("file_id:") {
-			file_id = Some(f[8..].to_string());
-		} else if f.starts_with("row_hash:") {
-			row_hash = Some(f[9..].to_string());
+		if let Some(stripped) = f.strip_prefix("file_id:") {
+			file_id = Some(stripped.to_string());
+		} else if let Some(stripped) = f.strip_prefix("row_hash:") {
+			row_hash = Some(stripped.to_string());
 		} else if i == 0 && f.starts_with("__") {
 			event_type = Some(f.clone());
 			extract_addresses_from_event(f, row, &mut address_hash, &mut credential_hash);
 		}
 	}
 
-	(event_type, address_hash, credential_hash, row_hash, file_id)
+	ParsedColumns {
+		event_type,
+		address_hash,
+		credential_hash,
+		row_hash,
+		file_id,
+	}
 }
 
 /// Extract address and credential hashes from event type and row.
@@ -67,17 +95,13 @@ fn extract_addresses_from_event(
 pub fn build_fields_json(row: &[String]) -> io::Result<String> {
 	let mut remaining: Vec<serde_json::Value> = Vec::new();
 
-	for (i, f) in row.iter().enumerate() {
+	for f in row.iter() {
 		if f.starts_with("file_id:") || f.starts_with("source_file:") || f.starts_with("row_hash:")
 		{
 			continue;
 		}
 
-		if i == 0 && f.starts_with("__") {
-			remaining.push(serde_json::Value::String(f.clone()));
-		} else {
-			remaining.push(serde_json::Value::String(f.clone()));
-		}
+		remaining.push(serde_json::Value::String(f.clone()));
 	}
 
 	let fields = serde_json::Value::Array(remaining);
@@ -85,31 +109,21 @@ pub fn build_fields_json(row: &[String]) -> io::Result<String> {
 }
 
 /// Store a normalized row in the database.
-pub fn store_row(
-	conn: &Connection,
-	dataset: Option<&str>,
-	event_type: &Option<String>,
-	address_hash: &Option<String>,
-	credential_hash: &Option<String>,
-	row_hash: &Option<String>,
-	file_id: &Option<String>,
-	source_file: &Option<String>,
-	fields_text: &str,
-) -> io::Result<()> {
+pub fn store_row(conn: &Connection, data: &RowData<'_>) -> io::Result<()> {
 	conn.execute(
 		"INSERT INTO normalized_rows (dataset, event_type, address_hash, credential_hash, \
 		 row_hash, file_id, source_file, fields) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
 		rusqlite::params![
-			dataset,
-			event_type,
-			address_hash,
-			credential_hash,
-			row_hash,
-			file_id,
-			source_file,
-			fields_text,
+			data.dataset,
+			data.event_type,
+			data.address_hash,
+			data.credential_hash,
+			data.row_hash,
+			data.file_id,
+			data.source_file,
+			data.fields_text,
 		],
 	)
-	.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+	.map_err(io::Error::other)?;
 	Ok(())
 }

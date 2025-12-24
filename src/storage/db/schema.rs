@@ -7,8 +7,8 @@ use rusqlite::Connection;
 /// Initialize the SQLite schema with all required tables and indexes.
 pub fn create_schema(conn: &Connection) -> io::Result<()> {
 	for statement in sql_statements() {
-		conn.execute(&statement, [])
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		conn.execute(statement, [])
+			.map_err(io::Error::other)?;
 	}
 	Ok(())
 }

@@ -198,8 +198,7 @@ pub fn detect_email_dot_aliases(
 /// # Returns
 /// Normalized phone in E.164 format: +[country_code][number]
 /// Example: +1-555-123-4567 → +15551234567
-#[allow(dead_code)]
-fn normalize_phone_e164(phone: &str, country_code: &str) -> Result<String, AliasResolutionError> {
+pub fn normalize_phone_e164(phone: &str, country_code: &str) -> Result<String, AliasResolutionError> {
 	// Remove all non-digit characters
 	let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
 

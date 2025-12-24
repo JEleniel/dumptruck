@@ -182,7 +182,7 @@ fn is_phone_number(value: &str) -> bool {
 
 	// Between 10-15 digits (international standard)
 	// With optional country code prefix OR formatting characters
-	(digit_count >= 10 && digit_count <= 15)
+	(10..=15).contains(&digit_count)
 		&& (has_country_code
 			|| value.contains('-')
 			|| value.contains(' ')
@@ -278,7 +278,7 @@ fn check_german_id(value: &str) -> Option<NationalIdMatch> {
 /// Format: [0-9]{13,15}
 fn check_french_id(digits: &str) -> Option<NationalIdMatch> {
 	let len = digits.len();
-	if (len < 13 || len > 15) || !digits.chars().all(|c| c.is_ascii_digit()) {
+	if !(13..=15).contains(&len) || !digits.chars().all(|c| c.is_ascii_digit()) {
 		return None;
 	}
 
@@ -491,7 +491,7 @@ fn luhn_checksum(digits: &str) -> bool {
 	let mut is_second = false;
 
 	for digit_char in digits.chars().rev() {
-		let mut digit = digit_char.to_digit(10).unwrap() as u32;
+		let mut digit = digit_char.to_digit(10).unwrap();
 		if is_second {
 			digit *= 2;
 			if digit > 9 {
@@ -524,17 +524,15 @@ fn validate_credit_card_network(digits: &str) -> bool {
 
 	// Mastercard: 51-55 or 2221-2720, length 16
 	if len == 16 {
-		if let Ok(first_two_num) = first_two.parse::<u32>() {
-			if (51..=55).contains(&first_two_num) {
+		if let Ok(first_two_num) = first_two.parse::<u32>()
+			&& (51..=55).contains(&first_two_num) {
 				return true;
 			}
-		}
 		// 2221-2720 range
-		if let Ok(first_four_num) = first_four.parse::<u32>() {
-			if (2221..=2720).contains(&first_four_num) {
+		if let Ok(first_four_num) = first_four.parse::<u32>()
+			&& (2221..=2720).contains(&first_four_num) {
 				return true;
 			}
-		}
 	}
 
 	// American Express: 34 or 37, length 15
@@ -543,41 +541,36 @@ fn validate_credit_card_network(digits: &str) -> bool {
 	}
 
 	// Discover: 6011, 622126-622925, 644-649, 65, length 16-19
-	if len >= 16 && len <= 19 {
+	if (16..=19).contains(&len) {
 		if first_four == "6011" {
 			return true;
 		}
-		if let Ok(first_six_num) = first_six.parse::<u32>() {
-			if (622126..=622925).contains(&first_six_num) {
+		if let Ok(first_six_num) = first_six.parse::<u32>()
+			&& (622126..=622925).contains(&first_six_num) {
 				return true;
 			}
-		}
-		if let Ok(first_three) = first_two.parse::<u32>() {
-			if (644..=649).contains(&first_three) {
+		if let Ok(first_three) = first_two.parse::<u32>()
+			&& (644..=649).contains(&first_three) {
 				return true;
 			}
-		}
 		if first_digit == '6' && first_two == "65" {
 			return true;
 		}
 	}
 
 	// JCB: 3528-3589, length 16-19
-	if len >= 16 && len <= 19 {
-		if let Ok(first_four_num) = first_four.parse::<u32>() {
-			if (3528..=3589).contains(&first_four_num) {
+	if (16..=19).contains(&len)
+		&& let Ok(first_four_num) = first_four.parse::<u32>()
+			&& (3528..=3589).contains(&first_four_num) {
 				return true;
 			}
-		}
-	}
 
 	// Diners Club: 300-305, 36, 38, 39, length 14
 	if len == 14 {
-		if let Ok(first_three) = first_two.parse::<u32>() {
-			if (300..=305).contains(&first_three) {
+		if let Ok(first_three) = first_two.parse::<u32>()
+			&& (300..=305).contains(&first_three) {
 				return true;
 			}
-		}
 		if first_two == "36" || first_two == "38" || first_two == "39" {
 			return true;
 		}
@@ -598,7 +591,7 @@ fn is_credit_card(value: &str) -> bool {
 	let len = digits_only.len();
 
 	// Credit cards are 13-19 digits
-	if len < 13 || len > 19 {
+	if !(13..=19).contains(&len) {
 		return false;
 	}
 
@@ -635,7 +628,7 @@ fn is_name(value: &str) -> bool {
 	// Most words should start with uppercase
 	let capitalized = words
 		.iter()
-		.filter(|w| w.chars().next().map_or(false, |c| c.is_uppercase()))
+		.filter(|w| w.chars().next().is_some_and(|c| c.is_uppercase()))
 		.count();
 	capitalized >= words.len() / 2
 }
@@ -765,8 +758,8 @@ fn is_crypto_address(value: &str) -> bool {
 	let trimmed = value.trim();
 
 	// Bitcoin addresses: 26-35 chars, start with 1, 3, or bc1, alphanumeric (no 0, O, I, l)
-	if trimmed.len() >= 26 && trimmed.len() <= 62 {
-		if trimmed.starts_with('1') || trimmed.starts_with('3') || trimmed.starts_with("bc1") {
+	if trimmed.len() >= 26 && trimmed.len() <= 62
+		&& (trimmed.starts_with('1') || trimmed.starts_with('3') || trimmed.starts_with("bc1")) {
 			// For bc1 addresses, allow lowercase letters and digits
 			if trimmed.starts_with("bc1") {
 				return trimmed.chars().skip(3).all(|c| {
@@ -779,7 +772,6 @@ fn is_crypto_address(value: &str) -> bool {
 				c.is_ascii_alphanumeric() && c != '0' && c != 'O' && c != 'I' && c != 'l'
 			});
 		}
-	}
 
 	// Ethereum addresses: 42 chars, start with 0x, hex only
 	if trimmed.len() == 42 && trimmed.starts_with("0x") {
@@ -812,26 +804,24 @@ fn is_digital_wallet_token(value: &str) -> bool {
 	}
 
 	// PayPal merchant ID: uppercase hex, 12-16 chars
-	if trimmed.len() >= 12 && trimmed.len() <= 16 {
-		if trimmed
+	if trimmed.len() >= 12 && trimmed.len() <= 16
+		&& trimmed
 			.chars()
 			.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
 		{
 			// Likely PayPal merchant ID if all uppercase alphanumeric
 			return true;
 		}
-	}
 
 	// Apple Pay / Google Pay tokens: long alphanumeric with underscores
-	if trimmed.len() >= 16 {
-		if trimmed
+	if trimmed.len() >= 16
+		&& trimmed
 			.chars()
 			.all(|c| c.is_ascii_alphanumeric() || c == '_')
 			&& trimmed.len() <= 64
 		{
 			return true;
 		}
-	}
 
 	false
 }
@@ -1008,48 +998,42 @@ pub fn hash_ssn(value: &str) -> String {
 }
 
 /// Hash an IBAN for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_iban(value: &str) -> String {
+pub fn hash_iban(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized = value.replace(" ", "").replace("-", "").to_uppercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
 /// Hash a SWIFT code for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_swift_code(value: &str) -> String {
+pub fn hash_swift_code(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized = value.replace("-", "").to_uppercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
 /// Hash a routing number for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_routing_number(value: &str) -> String {
+pub fn hash_routing_number(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
 	hash_utils::sha256_hex(&normalized)
 }
 
 /// Hash a bank account number for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_bank_account(value: &str) -> String {
+pub fn hash_bank_account(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized: String = value.chars().filter(|c| c.is_ascii_digit()).collect();
 	hash_utils::sha256_hex(&normalized)
 }
 
 /// Hash a cryptocurrency address for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_crypto_address(value: &str) -> String {
+pub fn hash_crypto_address(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized = value.trim().to_lowercase();
 	hash_utils::sha256_hex(&normalized)
 }
 
 /// Hash a digital wallet token for duplicate detection (Stage 1: Evidence Preservation)
-#[allow(dead_code)]
-fn hash_digital_wallet_token(value: &str) -> String {
+pub fn hash_digital_wallet_token(value: &str) -> String {
 	use crate::core::hash_utils;
 	let normalized = value.trim().to_lowercase();
 	hash_utils::sha256_hex(&normalized)

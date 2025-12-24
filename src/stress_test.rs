@@ -120,8 +120,8 @@ fn load_test_fixtures() -> Vec<(String, Vec<u8>)> {
 	if let Ok(entries) = std::fs::read_dir(fixture_dir) {
 		for entry in entries.flatten() {
 			let path = entry.path();
-			if path.is_file() {
-				if let Ok(content) = std::fs::read(&path) {
+			if path.is_file()
+				&& let Ok(content) = std::fs::read(&path) {
 					let filename = path
 						.file_name()
 						.and_then(|n| n.to_str())
@@ -129,7 +129,6 @@ fn load_test_fixtures() -> Vec<(String, Vec<u8>)> {
 						.to_string();
 					fixtures.push((filename, content));
 				}
-			}
 		}
 	}
 
@@ -180,8 +179,7 @@ async fn send_ingest_request(
 }
 
 /// Check job status
-#[allow(dead_code)]
-async fn check_job_status(
+pub async fn check_job_status(
 	client: &reqwest::Client,
 	server_url: &str,
 	oauth_token: &str,
@@ -246,13 +244,12 @@ async fn run_stress_test(config: Config) -> Result<(), Box<dyn std::error::Error
 
 	for request_num in 0..config.total_requests {
 		// Wait for a slot to become available if we have too many concurrent requests
-		if handles.len() >= config.concurrent_requests {
-			if let Ok(_) = tokio::select! {
+		if handles.len() >= config.concurrent_requests
+			&& let Ok(_) = tokio::select! {
 				result = handles.remove(0) => result,
 			} {
 				// Handle completed task
 			}
-		}
 
 		let (filename, _content) = fixture_cycle.next().unwrap();
 		let filename = filename.clone();
