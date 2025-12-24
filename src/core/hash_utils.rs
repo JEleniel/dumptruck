@@ -1,7 +1,7 @@
 //! Hash utilities and cryptographic fingerprinting
 //!
 //! This module provides cryptographic hashing operations:
-//! - SHA-256 and BLAKE3 dual signatures
+//! - SHA-256 hashing
 //! - Credential fingerprinting
 //! - Hash verification and comparison algorithms
 

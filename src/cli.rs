@@ -27,6 +27,8 @@ pub enum Commands {
 	ExportDb(ExportDbArgs),
 	/// Import database from JSON export with deduplication
 	ImportDb(ImportDbArgs),
+	/// Create seed database from folder of data files with automatic startup import
+	Seed(SeedArgs),
 	/// Start HTTP/2 server with TLS 1.3+ and OAuth authentication
 	Server(ServerArgs),
 	/// Generate rainbow table entries with SHA512 and NTLM hashes for weak passwords
@@ -300,6 +302,50 @@ pub struct GenerateTablesArgs {
 	/// Include SHA512 hashes
 	#[arg(long, default_value = "true")]
 	pub include_sha512: bool,
+}
+
+/// Arguments for the seed command
+#[derive(Parser, Debug)]
+pub struct SeedArgs {
+	/// Path to folder containing data files to create seed from
+	#[arg(value_name = "FOLDER")]
+	pub folder: PathBuf,
+
+	/// Output path for seed database (default: data/seed.db)
+	#[arg(short, long, value_name = "PATH")]
+	pub output: Option<PathBuf>,
+
+	/// Include HIBP enrichment in seed (requires API key)
+	#[arg(long, default_value = "false")]
+	pub enrichment: bool,
+
+	/// Include vector embeddings in seed (requires Ollama)
+	#[arg(long, default_value = "false")]
+	pub embeddings: bool,
+
+	/// Number of parallel workers for processing files
+	#[arg(long)]
+	pub workers: Option<usize>,
+
+	/// Ollama server URL (default: http://localhost:11435)
+	#[arg(long, value_name = "URL")]
+	pub ollama_url: Option<String>,
+
+	/// HIBP API key (or set DUMPTRUCK_HIBP_KEY environment variable)
+	#[arg(long, value_name = "KEY")]
+	pub hibp_key: Option<String>,
+
+	/// Database path for seed storage
+	#[arg(long, value_name = "PATH")]
+	pub database: Option<String>,
+
+	/// Configuration file path (JSON format)
+	#[arg(long, short = 'c', value_name = "FILE")]
+	pub config: Option<PathBuf>,
+
+	/// Verbosity level (repeat for more verbose: -v, -vv, -vvv)
+	#[arg(short, action = clap::ArgAction::Count)]
+	pub verbose: u8,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

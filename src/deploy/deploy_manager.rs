@@ -1,5 +1,3 @@
-use std::io;
-
 use tokio::{
 	process::Command,
 	time::{Duration, Instant, sleep},
@@ -203,8 +201,14 @@ impl ServiceManager {
 	/// Stop all known services (Ollama only) regardless of tracking
 	/// Used for graceful shutdown when containers may have been started outside this session
 	pub async fn stop_all_services(&self, verbose: u32) -> Result<(), String> {
+		// Only attempt to stop Ollama if Docker is available
+		if !Self::is_docker_available().await && verbose >= 2 {
+			eprintln!("[DEBUG] Docker not available, skipping service shutdown");
+			return Ok(());
+		}
+
 		if verbose >= 2 {
-			eprintln!("[DEBUG] Stopping all known docker services (Ollama)");
+			eprintln!("[DEBUG] Stopping all known docker services (Ollama only)");
 		}
 
 		// Stop Ollama
@@ -220,6 +224,20 @@ impl ServiceManager {
 
 		// Succeed even if individual services fail to stop (they may not be running)
 		Ok(())
+	}
+
+	/// Check if Docker (or docker-compose) is available
+	async fn is_docker_available() -> bool {
+		let commands = ["docker", "docker-compose"];
+		for cmd in &commands {
+			let status = Command::new(cmd).arg("--version").status().await;
+			if let Ok(st) = status
+				&& st.success()
+			{
+				return true;
+			}
+		}
+		false
 	}
 
 	/// Stop a docker compose service in its directory
@@ -268,55 +286,4 @@ async fn is_service_running(host: &str, port: u16, verbose: u32) -> bool {
 		);
 	}
 	ServiceManager::is_service_available(host, port).await
-}
-
-/// Start the docker compose stack for Ollama from its directory.
-pub async fn start() -> Result<(), io::Error> {
-	let up_cmds = [
-		("docker", vec!["compose", "up", "--build", "-d"]),
-		("docker-compose", vec!["up", "--build", "-d"]),
-	];
-
-	let mut last_err: Option<io::Error> = None;
-
-	// Start Ollama
-	for (bin, args) in up_cmds.iter() {
-		let status = Command::new(bin)
-			.current_dir("docker/ollama")
-			.args(args)
-			.status()
-			.await;
-
-		match status {
-			Ok(st) if st.success() => return Ok(()),
-			Ok(st) => {
-				last_err = Some(io::Error::other(format!("{} exited with {}", bin, st)));
-			}
-			Err(e) => {
-				last_err = Some(e);
-			}
-		}
-	}
-
-	Err(last_err.unwrap_or_else(|| io::Error::other("docker compose up failed")))
-}
-
-/// Stop and remove the docker compose stack.
-pub async fn stop() -> Result<(), io::Error> {
-	let down_cmds = [
-		("docker", vec!["compose", "down", "-v"]),
-		("docker-compose", vec!["down", "-v"]),
-	];
-
-	let mut last_err: Option<io::Error> = None;
-	for (bin, args) in down_cmds.iter() {
-		let status = Command::new(bin).args(args).status().await;
-		match status {
-			Ok(st) if st.success() => return Ok(()),
-			Ok(st) => last_err = Some(io::Error::other(format!("{} exited with {}", bin, st))),
-			Err(e) => last_err = Some(e),
-		}
-	}
-
-	Err(last_err.unwrap_or_else(|| io::Error::other("docker compose down failed")))
 }

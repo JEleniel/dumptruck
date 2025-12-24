@@ -6,7 +6,7 @@
 //! - Capturing alternate file names for the same data
 //! - Storing metadata for chain of custody and deduplication
 //!
-//! Note: Currently uses SHA-256 for hashing. BLAKE3 support to be added.
+//! Uses SHA-256 for file hashing and integrity verification.
 
 use sha2::Digest;
 use std::fs::File;

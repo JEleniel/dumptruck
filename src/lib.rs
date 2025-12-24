@@ -13,6 +13,7 @@ pub mod enrichment;
 pub mod ingest;
 pub mod network;
 pub mod normalization;
+pub mod seed;
 pub mod storage;
 
 // Backwards compatibility: re-export specific items (not modules with conflicting names)
@@ -39,31 +40,17 @@ pub async fn run() {
 		Commands::Stats(args) => args.verbose as u32,
 		Commands::ExportDb(args) => args.verbose as u32,
 		Commands::ImportDb(args) => args.verbose as u32,
+		Commands::Seed(args) => args.verbose as u32,
 		Commands::Server(args) => args.verbose as u32,
 		Commands::GenerateTables(_) => 0,
 	};
 
-	// Create service manager to handle startup/shutdown
+	// Create service manager to handle startup/shutdown (Ollama-only if enabled and Docker available)
 	let service_manager = deploy::ServiceManager::new();
 
-	// For server, stats, and ingest commands, ensure services are available
-	// NOTE: Commented out PostgreSQL startup since we now use SQLite
-	// match &cli.command {
-	// 	Commands::Server(_)
-	// 	| Commands::Ingest(_)
-	// 	| Commands::Stats(_)
-	// 	| Commands::ExportDb(_)
-	// 	| Commands::ImportDb(_) => {
-	// 		if let Err(e) = service_manager
-	// 			.ensure_services_running(verbose, config.as_ref())
-	// 			.await
-	// 		{
-	// 			eprintln!("Error: Failed to ensure services are running: {}", e);
-	// 			std::process::exit(1);
-	// 		}
-	// 	}
-	// 	_ => {}
-	// }
+	// NOTE: Service startup is not automatically triggered. Services are optional:
+	// - If Ollama is enabled in config AND Docker is available, it can be manually started
+	// - The system works fine without Docker or optional services
 
 	// Dispatch to appropriate command handler
 	let result = match cli.command {
@@ -72,6 +59,7 @@ pub async fn run() {
 		Commands::Stats(args) => api::handlers::stats(args).await,
 		Commands::ExportDb(args) => api::handlers::export_db(args).await,
 		Commands::ImportDb(args) => api::handlers::import_db(args).await,
+		Commands::Seed(args) => api::handlers::seed(args).await,
 		Commands::Server(args) => api::handlers::server(args).await,
 		Commands::GenerateTables(args) => api::handlers::generate_tables(args).await,
 	};

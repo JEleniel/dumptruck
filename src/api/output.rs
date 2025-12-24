@@ -24,33 +24,31 @@ pub struct IngestResult {
 	/// PII/NPI detection summary
 	#[serde(default)]
 	pub pii_summary: Option<PiiDetectionSummary>,
-	/// Detailed per-row detection findings
-	#[serde(default, skip_serializing_if = "Vec::is_empty")]
-	pub detailed_findings: Vec<DetailedRowFinding>,
+	/// Grouped detection findings (detection_type → [{field, rows}])
+	#[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+	pub detection_groups: std::collections::BTreeMap<String, Vec<DetectionFieldGroup>>,
 	/// Summary metadata events
 	pub metadata: Vec<String>,
 	/// Processing errors encountered
 	pub errors: Vec<String>,
 }
 
-/// Detailed finding for a single row
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DetailedRowFinding {
-	/// Row index (1-based for user-friendly display)
-	pub row_number: usize,
-	/// Detections found in this row
-	pub detections: Vec<Detection>,
-}
-
-/// A single detected PII/NPI value
+/// A single detected PII/NPI value (for internal use during processing)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Detection {
 	/// Column name (if available)
 	pub column: Option<String>,
-	/// The detected value
-	pub value: String,
 	/// Type of detection
 	pub detection_type: String,
+}
+
+/// Detection grouped by field with row numbers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectionFieldGroup {
+	/// Field/column name where detection occurred
+	pub field: String,
+	/// Row numbers where this field had detections
+	pub rows: Vec<usize>,
 }
 
 /// Summary of PII/NPI detections found
@@ -119,6 +117,40 @@ impl OutputFormatter for CsvFormatter {
 	}
 }
 
+/// Format a list of row numbers compactly (e.g., "1-5, 7, 10-15")
+fn format_row_list(rows: &[usize]) -> String {
+	if rows.is_empty() {
+		return String::new();
+	}
+
+	let mut result = Vec::new();
+	let mut start = rows[0];
+	let mut end = rows[0];
+
+	for &row in &rows[1..] {
+		if row == end + 1 {
+			end = row;
+		} else {
+			if start == end {
+				result.push(start.to_string());
+			} else {
+				result.push(format!("{}-{}", start, end));
+			}
+			start = row;
+			end = row;
+		}
+	}
+
+	// Handle the last range
+	if start == end {
+		result.push(start.to_string());
+	} else {
+		result.push(format!("{}-{}", start, end));
+	}
+
+	result.join(", ")
+}
+
 /// Human-readable text output formatter
 pub struct TextFormatter;
 
@@ -184,23 +216,17 @@ impl OutputFormatter for TextFormatter {
 			}
 		}
 
-		// Display detailed findings
-		if !result.detailed_findings.is_empty() {
-			output.push_str("\n=== Detailed Findings ===\n\n");
-			for row_finding in &result.detailed_findings {
-				output.push_str(&format!("Row {}:\n", row_finding.row_number));
-				for detection in &row_finding.detections {
-					if let Some(col) = &detection.column {
-						output.push_str(&format!(
-							"  [{col}] {}: {}\n",
-							detection.detection_type, detection.value
-						));
-					} else {
-						output.push_str(&format!(
-							"  {}: {}\n",
-							detection.detection_type, detection.value
-						));
-					}
+		// Display detection findings grouped by type and field
+		if !result.detection_groups.is_empty() {
+			output.push_str("\n=== Detections Found ===\n\n");
+			for (detection_type, field_groups) in &result.detection_groups {
+				output.push_str(&format!("{}:\n", detection_type));
+				for field_group in field_groups {
+					output.push_str(&format!(
+						"  Field '{}': rows {}\n",
+						field_group.field,
+						format_row_list(&field_group.rows)
+					));
 				}
 				output.push('\n');
 			}
@@ -294,7 +320,7 @@ mod tests {
 			weak_passwords_found: 5,
 			breached_addresses: 15,
 			pii_summary: None,
-			detailed_findings: vec![],
+			detection_groups: std::collections::BTreeMap::new(),
 			metadata: vec!["test".to_string()],
 			errors: vec![],
 		};
@@ -314,7 +340,7 @@ mod tests {
 			weak_passwords_found: 5,
 			breached_addresses: 15,
 			pii_summary: None,
-			detailed_findings: vec![],
+			detection_groups: std::collections::BTreeMap::new(),
 			metadata: vec![],
 			errors: vec!["test error".to_string()],
 		};

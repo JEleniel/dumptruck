@@ -2,7 +2,7 @@
 //!
 //! This module contains fundamental utilities and configuration components:
 //! - Configuration management and loading
-//! - Hash utilities (SHA-256, BLAKE3, fingerprinting)
+//! - Hash utilities (SHA-256, fingerprinting)
 //! - File locking mechanisms
 //! - Secure deletion procedures
 
