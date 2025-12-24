@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
+    name: Build ${{ matrix.os }} ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -24,6 +24,10 @@ jobs:
 
           - os: macos-latest
             target: aarch64-apple-darwin
+            artifact_name: dumptruck
+
+          - os: macos-13
+            target: x86_64-apple-darwin
             artifact_name: dumptruck
 
           - os: windows-latest
@@ -53,22 +57,22 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          zip -r dumptruck-linux.zip dumptruck
-          mv dumptruck-linux.zip ../../../
+          zip -r dumptruck-linux-${{ matrix.target }}.zip dumptruck
+          mv dumptruck-linux-${{ matrix.target }}.zip ../../../
 
       - name: Package macOS
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos')
         run: |
           cd target/${{ matrix.target }}/release
-          zip -r dumptruck-macos.zip dumptruck
-          mv dumptruck-macos.zip ../../../
+          zip -r dumptruck-macos-${{ matrix.target }}.zip dumptruck
+          mv dumptruck-macos-${{ matrix.target }}.zip ../../../
 
       - name: Package Windows
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
           $SourcePath = "target\${{ matrix.target }}\release\dumptruck.exe"
-          $DestZip = "dumptruck-windows.zip"
+          $DestZip = "dumptruck-windows-${{ matrix.target }}.zip"
           Compress-Archive -Path $SourcePath -DestinationPath $DestZip
           Move-Item $DestZip . -Force
 
@@ -81,7 +85,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dumptruck-${{ matrix.os }}
+          name: dumptruck-${{ matrix.os }}-${{ matrix.target }}
           path: |
             target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
             target/${{ matrix.target }}/release/checksum.sha256
@@ -117,30 +121,19 @@ jobs:
             release_assets/*
 
   build-deb:
-    name: Build Debian Package (${{ matrix.arch }})
+    name: Build Debian Package (amd64)
     runs-on: ubuntu-latest
     needs: release
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            target: x86_64-unknown-linux-gnu
-            dpkg_arch: amd64
-
-          - arch: arm64
-            target: aarch64-unknown-linux-gnu
-            dpkg_arch: arm64
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-unknown-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: x86_64-unknown-linux-gnu
 
       - name: Install build dependencies
         run: |
@@ -172,17 +165,17 @@ jobs:
 
       - name: Build Debian package
         run: |
-          DEB_BUILD_OPTIONS=nostrip dpkg-buildpackage -us -uc -b -d --target-arch=${{ matrix.dpkg_arch }}
+          DEB_BUILD_OPTIONS=nostrip dpkg-buildpackage -us -uc -b -d
 
       - name: Generate checksums
         run: |
           cd ..
-          sha256sum dumptruck_*.deb > dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
-          cat dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+          sha256sum dumptruck_*.deb > dumptruck_${{ steps.version.outputs.DEB_VERSION }}.deb.sha256
+          cat dumptruck_${{ steps.version.outputs.DEB_VERSION }}.deb.sha256
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}-1_${{ matrix.dpkg_arch }}.deb
-            ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}_${{ matrix.arch }}.deb.sha256
+            ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}-1_amd64.deb
+            ${{ github.workspace }}/../dumptruck_${{ steps.version.outputs.DEB_VERSION }}.deb.sha256
