@@ -10,7 +10,7 @@ use crate::{
 	enrichment::{HibpClient, ollama::OllamaClient},
 	ingest::adapters::FormatAdapter,
 	normalization,
-	storage::StorageAdapter,
+	storage::{StorageAdapter, db},
 };
 
 /// Configuration for the async pipeline.
@@ -40,6 +40,18 @@ pub struct AsyncPipeline<A: FormatAdapter, S: StorageAdapter> {
 	config: AsyncPipelineConfig,
 	ollama_client: Option<OllamaClient>,
 	hibp_client: Option<HibpClient>,
+}
+
+/// Parameters for address processing in the async pipeline.
+// (Currently unused - helper functions for future address-specific pipeline)
+pub struct ProcessAddressesParams<'a> {
+	pub normalized: &'a [String],
+	pub addr_hashes: &'a [String],
+	pub cred_hashes: &'a [String],
+	pub file_id: &'a str,
+	pub config: &'a AsyncPipelineConfig,
+	pub ollama_client: Option<&'a OllamaClient>,
+	pub hibp_client: Option<&'a HibpClient>,
 }
 
 impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
@@ -103,7 +115,7 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 		];
 		let mut meta_row = meta.clone();
 		meta_row.push(format!("file_id:{}", file_id));
-		let _ = storage.store_row(&meta_row)?;
+		storage.store_row(&meta_row)?;
 
 		// Detect header row
 		let (header, expected_columns) = Self::detect_header(&rows);
@@ -114,16 +126,16 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 				continue;
 			}
 
-			let normalized = normalization::normalization::normalize_row(row);
+			let normalized = normalization::engine::normalize_row(row);
 
 			// Validate column count
-			if let Some(expected) = expected_columns {
-				if normalized.len() != expected {
-					let raw = row.join(",");
-					let m = vec!["__malformed_row__".to_string(), idx.to_string(), raw];
-					let _ = Self::store_with_file(&mut storage, &m, &file_id)?;
-					continue;
-				}
+			if let Some(expected) = expected_columns
+				&& normalized.len() != expected
+			{
+				let raw = row.join(",");
+				let m = vec!["__malformed_row__".to_string(), idx.to_string(), raw];
+				Self::store_with_file(&mut storage, &m, &file_id)?;
+				continue;
 			}
 
 			// Detect and process addresses
@@ -137,7 +149,7 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 					"row_skipped".to_string(),
 					format!("cred_count:{}", cred_hashes.len()),
 				];
-				let _ = Self::store_with_file(&mut storage, &ev, &file_id)?;
+				Self::store_with_file(&mut storage, &ev, &file_id)?;
 				continue;
 			}
 
@@ -193,7 +205,7 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 			// Deduplication
 			if storage.contains_hash(&row_hash)? {
 				let dup = vec!["__duplicate_row__".to_string(), row_hash.clone()];
-				let _ = Self::store_with_file(&mut storage, &dup, &file_id)?;
+				Self::store_with_file(&mut storage, &dup, &file_id)?;
 			} else {
 				enriched.push(format!("row_hash:{}", row_hash));
 				Self::store_with_file(&mut storage, &enriched, &file_id)?;
@@ -225,54 +237,6 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 		storage.store_row(&r)
 	}
 
-	/// Process addresses and associated credentials
-	#[allow(dead_code)]
-	async fn process_addresses(
-		storage: &mut S,
-		normalized: &[String],
-		addr_hashes: &[String],
-		cred_hashes: &[String],
-		file_id: &str,
-		config: &AsyncPipelineConfig,
-		ollama_client: Option<&OllamaClient>,
-		hibp_client: Option<&HibpClient>,
-	) -> Result<(), std::io::Error> {
-		for addr in addr_hashes.iter() {
-			let addr_seen = storage.address_exists(addr)?;
-
-			if !addr_seen {
-				let ev = vec!["__new_address__".to_string(), addr.clone()];
-				Self::store_with_file(storage, &ev, file_id)?;
-
-				let r = vec!["__address_hash__".to_string(), addr.clone()];
-				Self::store_with_file(storage, &r, file_id)?;
-
-				if config.enable_embeddings {
-					Self::enrich_with_embedding_async(
-						storage,
-						normalized,
-						addr,
-						ollama_client,
-						config.vector_similarity_threshold,
-					)
-					.await?;
-				}
-
-				if config.enable_hibp {
-					Self::enrich_with_hibp_async(storage, normalized, addr, hibp_client).await?;
-				}
-			}
-
-			// Process credentials for this address
-			Self::process_credentials(storage, addr, cred_hashes, addr_seen, file_id)?;
-		}
-
-		// Enrich and store the row
-		Self::store_enriched_row(storage, normalized, addr_hashes, cred_hashes, file_id)?;
-
-		Ok(())
-	}
-
 	/// Process credentials for a specific address
 	fn process_credentials(
 		storage: &mut S,
@@ -301,36 +265,6 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 				let mapping = vec!["__addr_cred__".to_string(), addr.to_string(), cred.clone()];
 				Self::store_with_file(storage, &mapping, file_id)?;
 			}
-		}
-		Ok(())
-	}
-
-	/// Store enriched row with deduplication
-	#[allow(dead_code)]
-	fn store_enriched_row(
-		storage: &mut S,
-		normalized: &[String],
-		addr_hashes: &[String],
-		cred_hashes: &[String],
-		file_id: &str,
-	) -> Result<(), std::io::Error> {
-		let mut enriched = normalized.to_vec();
-		let row_join = normalized.join("|");
-		let row_hash = hash_utils::sha256_hex(&row_join);
-
-		for h in addr_hashes.iter() {
-			enriched.push(format!("addr_sha256:{}", h));
-		}
-		for h in cred_hashes.iter() {
-			enriched.push(format!("cred_sha256:{}", h));
-		}
-
-		if storage.contains_hash(&row_hash)? {
-			let dup = vec!["__duplicate_row__".to_string(), row_hash.clone()];
-			let _ = Self::store_with_file(storage, &dup, file_id)?;
-		} else {
-			enriched.push(format!("row_hash:{}", row_hash));
-			Self::store_with_file(storage, &enriched, file_id)?;
 		}
 		Ok(())
 	}
@@ -443,19 +377,20 @@ impl<A: FormatAdapter, S: StorageAdapter> AsyncPipeline<A, S> {
 				match hibp.get_breaches_for_address(addr_text).await {
 					Ok(breaches) => {
 						for breach in breaches {
-							let _ = storage.insert_address_breach(
-								addr_hash,
-								&breach.name,
-								Some(&breach.title),
-								Some(&breach.domain),
-								Some(&breach.breach_date),
-								Some(breach.pwn_count as i32),
-								Some(&breach.description),
-								breach.is_verified,
-								breach.is_fabricated,
-								breach.is_sensitive,
-								breach.is_retired,
-							);
+							let record = db::BreachRecord {
+								canonical_hash: addr_hash,
+								breach_name: &breach.name,
+								breach_title: Some(&breach.title),
+								breach_domain: Some(&breach.domain),
+								breach_date: Some(&breach.breach_date),
+								pwn_count: Some(breach.pwn_count as i32),
+								description: Some(&breach.description),
+								is_verified: breach.is_verified,
+								is_fabricated: breach.is_fabricated,
+								is_sensitive: breach.is_sensitive,
+								is_retired: breach.is_retired,
+							};
+							let _ = storage.insert_address_breach(&record);
 						}
 					}
 					Err(e) => {
@@ -528,6 +463,20 @@ mod tests {
 				.insert((addr_hash.to_string(), cred_hash.to_string()));
 			Ok(())
 		}
+
+		fn insert_address_breach(
+			&mut self,
+			_record: &db::BreachRecord<'_>,
+		) -> std::io::Result<bool> {
+			Ok(false)
+		}
+
+		fn insert_custody_record(
+			&mut self,
+			_record: &db::CustodyRecord<'_>,
+		) -> std::io::Result<bool> {
+			Ok(false)
+		}
 	}
 
 	#[tokio::test]
@@ -551,7 +500,7 @@ mod tests {
 			storage
 				.rows
 				.iter()
-				.any(|r| r.get(0).map(|s| s.as_str()) == Some("__file_hash__"))
+				.any(|r| r.first().map(|s| s.as_str()) == Some("__file_hash__"))
 		);
 	}
 
@@ -575,7 +524,7 @@ mod tests {
 			storage
 				.rows
 				.iter()
-				.any(|r| r.get(0).map(|s| s.as_str()) == Some("__new_address__"))
+				.any(|r| r.first().map(|s| s.as_str()) == Some("__new_address__"))
 		);
 	}
 }

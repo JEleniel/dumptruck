@@ -161,7 +161,7 @@ impl RiskScoringEngine {
 			weak_hash_detected,
 			breach_count,
 			new_credential_since_breach,
-			&pii_types,
+			pii_types,
 			anomaly_count,
 		);
 

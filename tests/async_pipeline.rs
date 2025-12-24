@@ -55,6 +55,13 @@ impl StorageAdapter for TestStorage {
 			.insert((addr_hash.to_string(), cred_hash.to_string()));
 		Ok(())
 	}
+
+	fn insert_custody_record(
+		&mut self,
+		_record: &dumptruck::storage::CustodyRecord<'_>,
+	) -> std::io::Result<bool> {
+		Ok(false)
+	}
 }
 
 #[tokio::test]
@@ -89,14 +96,14 @@ charlie@test.com,pass123
 	let has_file_hash = final_storage
 		.rows
 		.iter()
-		.any(|r| r.get(0).map(|s| s.as_str()) == Some("__file_hash__"));
+		.any(|r| r.first().map(|s| s.as_str()) == Some("__file_hash__"));
 	assert!(has_file_hash, "Missing __file_hash__ metadata row");
 
 	// Check for new address events
 	let new_addr_events: Vec<_> = final_storage
 		.rows
 		.iter()
-		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__new_address__"))
+		.filter(|r| r.first().map(|s| s.as_str()) == Some("__new_address__"))
 		.collect();
 	assert!(
 		new_addr_events.len() >= 2,
@@ -108,7 +115,7 @@ charlie@test.com,pass123
 	let cred_hash_rows: Vec<_> = final_storage
 		.rows
 		.iter()
-		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__credential_hash__"))
+		.filter(|r| r.first().map(|s| s.as_str()) == Some("__credential_hash__"))
 		.collect();
 	assert!(
 		!cred_hash_rows.is_empty(),
@@ -119,7 +126,7 @@ charlie@test.com,pass123
 	let addr_cred_rows: Vec<_> = final_storage
 		.rows
 		.iter()
-		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__addr_cred__"))
+		.filter(|r| r.first().map(|s| s.as_str()) == Some("__addr_cred__"))
 		.collect();
 	assert!(
 		!addr_cred_rows.is_empty(),
@@ -130,7 +137,7 @@ charlie@test.com,pass123
 	let known_addr_new_cred: Vec<_> = final_storage
 		.rows
 		.iter()
-		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__known_address_new_credential__"))
+		.filter(|r| r.first().map(|s| s.as_str()) == Some("__known_address_new_credential__"))
 		.collect();
 	assert!(
 		!known_addr_new_cred.is_empty(),
@@ -181,7 +188,7 @@ alice@example.com,pass123
 		.rows
 		.iter()
 		.filter(|r| {
-			!r.get(0)
+			!r.first()
 				.map(|s| s.as_str())
 				.map(|s| s.starts_with("__"))
 				.unwrap_or(false)
@@ -220,7 +227,7 @@ bob@example.org
 	let malformed_events: Vec<_> = final_storage
 		.rows
 		.iter()
-		.filter(|r| r.get(0).map(|s| s.as_str()) == Some("__malformed_row__"))
+		.filter(|r| r.first().map(|s| s.as_str()) == Some("__malformed_row__"))
 		.collect();
 	assert!(
 		!malformed_events.is_empty(),

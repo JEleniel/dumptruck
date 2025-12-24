@@ -6,12 +6,12 @@
 //! - Anomaly and novelty detection in credential data
 //! - Outlier identification for risk scoring
 
+pub mod analyzer;
 pub mod anomaly_detection;
-pub mod detection;
 pub mod npi_detection;
 pub mod rainbow_table;
 
+pub use analyzer::DetectionResult;
 pub use anomaly_detection::AnomalyScore;
-pub use detection::DetectionResult;
 pub use npi_detection::{PiiType, detect_pii};
 pub use rainbow_table::WeakPasswordHash;

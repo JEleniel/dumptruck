@@ -60,6 +60,7 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * e2e tests cover all normal user interactions and common user errors.
 * All tests related to the work are passing.
 * The Issue has been completely resolved.
+* Code must pass `clippy`, `cargo fmt`, and all other linters without warnings or errors.
 
 ## Copilot Persona & Behavior
 

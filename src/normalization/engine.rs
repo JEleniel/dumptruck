@@ -28,10 +28,10 @@ pub fn normalize_field(input: &str) -> String {
 	// that different user-entered glyphs compare equal. Map curly apostrophes
 	// to ASCII apostrophe and common dash variants to ASCII hyphen.
 	if s_folded.contains('\u{2019}') || s_folded.contains('\u{2018}') {
-		s_folded = s_folded.replace('\u{2019}', "'").replace('\u{2018}', "'");
+		s_folded = s_folded.replace(['\u{2019}', '\u{2018}'], "'");
 	}
 	if s_folded.contains('\u{2013}') || s_folded.contains('\u{2014}') {
-		s_folded = s_folded.replace('\u{2013}', "-").replace('\u{2014}', "-");
+		s_folded = s_folded.replace(['\u{2013}', '\u{2014}'], "-");
 	}
 
 	let mut out = String::with_capacity(s_folded.len());

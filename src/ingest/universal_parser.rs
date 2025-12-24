@@ -6,10 +6,10 @@
 //! - Nested structures → concatenated paths (e.g., "user.address.street")
 //! - Lists → multiple rows (one per item)
 
-#[allow(unused_imports)]
-use serde_json::{Value, json};
-#[allow(unused_imports)]
-use std::collections::BTreeMap;
+use serde_json::Value;
+
+#[cfg(test)]
+use serde_json::json;
 
 /// Convert any JSON structure to rows of strings
 ///
@@ -37,7 +37,7 @@ pub fn json_to_rows(value: &Value) -> Vec<Vec<String>> {
 					arr.iter()
 						.map(|item| {
 							if let Value::Array(row) = item {
-								row.iter().map(|v| value_to_string(v)).collect()
+								row.iter().map(value_to_string).collect()
 							} else {
 								vec![value_to_string(item)]
 							}

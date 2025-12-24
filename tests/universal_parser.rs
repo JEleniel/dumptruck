@@ -218,8 +218,8 @@ fn test_json_deeply_nested_structure() {
 #[test]
 fn test_json_array_of_mixed_numeric_types() {
 	let json = json!([
-		{"int": 42, "float": 3.14, "exp": 1e-10},
-		{"int": 100, "float": 2.71, "exp": 5e5}
+		{"int": 42, "float": 3.5, "exp": 1e-10},
+		{"int": 100, "float": 2.2, "exp": 5e5}
 	]);
 	let rows = json_to_rows(&json);
 
@@ -246,7 +246,7 @@ fn test_xml_simple_elements() {
 	assert!(result.is_ok(), "XML parsing should succeed");
 
 	let rows = result.unwrap();
-	assert!(rows.len() > 0, "Should extract at least one row");
+	assert!(!rows.is_empty(), "Should extract at least one row");
 
 	// Should have extracted tag-value pairs
 	let all_values: String = rows

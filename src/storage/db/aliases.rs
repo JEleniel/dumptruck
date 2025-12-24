@@ -17,7 +17,7 @@ pub fn insert_alias_relationship(
 			 (canonical_hash, variant_hash, alias_type, confidence) VALUES (?1, ?2, ?3, ?4)",
 			rusqlite::params![canonical_hash, variant_hash, alias_type, confidence],
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(rows > 0)
 }
@@ -32,7 +32,7 @@ pub fn get_alias_relationships(
 			"SELECT variant_hash, alias_type, confidence FROM alias_relationships \
 			 WHERE canonical_hash = ?1",
 		)
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	let aliases = stmt
 		.query_map(rusqlite::params![canonical_hash], |row| {
@@ -42,9 +42,9 @@ pub fn get_alias_relationships(
 				row.get::<_, i32>(2)?,
 			))
 		})
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+		.map_err(io::Error::other)?
 		.collect::<Result<Vec<_>, _>>()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+		.map_err(io::Error::other)?;
 
 	Ok(aliases)
 }

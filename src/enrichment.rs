@@ -6,14 +6,14 @@
 //! - Risk scoring based on compromise potential and historical context
 //! - Rainbow table construction for pre-hashed credential detection
 
-pub mod enrichment;
 pub mod hibp;
 pub mod ollama;
 pub mod rainbow_table_builder;
 pub mod risk_scoring;
+pub mod service;
 
-pub use enrichment::SimpleEnricher;
 pub use hibp::HibpClient;
 pub use ollama::OllamaClient;
 pub use rainbow_table_builder::RainbowTableBuilder;
 pub use risk_scoring::RiskScore;
+pub use service::SimpleEnricher;

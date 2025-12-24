@@ -88,14 +88,14 @@ impl HibpClient {
 		let resp = req
 			.send()
 			.await
-			.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+			.map_err(|e| io::Error::other(e.to_string()))?;
 
 		match resp.status() {
 			reqwest::StatusCode::OK => {
 				let body = resp
 					.text()
 					.await
-					.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+					.map_err(|e| io::Error::other(e.to_string()))?;
 
 				let breaches: Vec<Breach> = serde_json::from_str(&body)
 					.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
@@ -110,14 +110,10 @@ impl HibpClient {
 				io::ErrorKind::InvalidInput,
 				"Invalid email address format",
 			)),
-			reqwest::StatusCode::TOO_MANY_REQUESTS => Err(io::Error::new(
-				io::ErrorKind::Other,
+			reqwest::StatusCode::TOO_MANY_REQUESTS => Err(io::Error::other(
 				"HIBP API rate limit exceeded; retry after delay",
 			)),
-			status => Err(io::Error::new(
-				io::ErrorKind::Other,
-				format!("HIBP API error: {}", status),
-			)),
+			status => Err(io::Error::other(format!("HIBP API error: {}", status))),
 		}
 	}
 
