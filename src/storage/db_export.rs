@@ -296,7 +296,7 @@ fn export_address_breaches(conn: &Connection) -> io::Result<Vec<BreachRecord>> {
 }
 
 fn export_file_metadata(conn: &Connection) -> io::Result<Vec<FileMetadataRecord>> {
-	let query = "SELECT file_id, original_filename, sha256_hash, blake3_hash, file_size, alternate_names, processing_status, created_at FROM file_metadata ORDER BY created_at";
+	let query = "SELECT file_id, original_filename, sha256_hash, file_size, alternate_names, processing_status, created_at FROM file_metadata ORDER BY created_at";
 	let mut stmt = conn.prepare(query).map_err(io::Error::other)?;
 
 	let records = stmt
@@ -305,11 +305,11 @@ fn export_file_metadata(conn: &Connection) -> io::Result<Vec<FileMetadataRecord>
 				file_id: row.get(0)?,
 				original_filename: row.get(1)?,
 				sha256_hash: row.get(2)?,
-				blake3_hash: row.get(3)?,
-				file_size: row.get(4)?,
-				alternate_names: row.get(5)?,
-				processing_status: row.get(6)?,
-				created_at: row.get::<_, chrono::DateTime<chrono::Utc>>(7)?.to_rfc3339(),
+				blake3_hash: String::new(),
+				file_size: row.get(3)?,
+				alternate_names: row.get(4)?,
+				processing_status: row.get(5)?,
+				created_at: row.get::<_, chrono::DateTime<chrono::Utc>>(6)?.to_rfc3339(),
 			})
 		})
 		.map_err(io::Error::other)?

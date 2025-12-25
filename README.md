@@ -27,7 +27,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - **Memory-Efficient Streaming**: Process GB/TB-scale files with constant memory usage via line-by-line streaming
 - **Parallel Processing**: Batch ingest with glob patterns and configurable worker threads
 - **Safe Ingestion**: Binary detection, UTF-8 validation with lossy fallback, 100MB file size limits, zero-crash guarantee
-- **Evidence Preservation**: Unique file IDs with dual hash signatures (SHA-256 + BLAKE3) and alternate name tracking
+- **Evidence Preservation**: Unique file IDs with SHA-256 hash signatures and alternate name tracking
 - **Compression Detection**: Automatic ZIP/gzip detection with safe nested level limits (max 3 levels)
 
 ### Normalization & Deduplication
@@ -92,7 +92,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - Binary file detection during ingest
 - UTF-8 validation with lossy fallback
 - Compression detection (ZIP/gzip with safe nesting limits)
-- File integrity (dual hash signatures: SHA-256 + BLAKE3)
+- File integrity (SHA-256 hash signatures)
 - Vector similarity search (Ollama embeddings with pgvector IVFFlat indexing)
 
 ### Chain of Custody & Security

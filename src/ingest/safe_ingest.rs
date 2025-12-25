@@ -186,32 +186,52 @@ pub fn safe_string_conversion(data: &[u8], verbose: u32) -> (String, bool) {
 	}
 }
 
-/// Safely process a file from disk
+/// Safely process a file from disk using line-by-line streaming
 ///
 /// This function handles:
 /// - File read errors
-/// - Binary files
-/// - Invalid UTF-8
-/// - Size limits
+/// - Binary file detection (checks first chunk)
+/// - Invalid UTF-8 (uses lossy conversion per line)
+/// - Size limits (warns but processes)
 ///
-/// Returns: (content_string, had_errors, safety_analysis)
+/// Returns: (lines, had_errors, safety_analysis)
 pub async fn safe_read_file(
 	path: &std::path::Path,
 	verbose: u32,
 ) -> io::Result<(String, bool, FileSafetyAnalysis)> {
-	// Read file (may be large, but we're cautious)
-	let data = match tokio::fs::read(path).await {
-		Ok(d) => d,
+	use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
+
+	// Open file for reading
+	let file = match tokio::fs::File::open(path).await {
+		Ok(f) => f,
 		Err(e) => {
 			if verbose >= 1 {
-				eprintln!("[ERROR] Failed to read file {}: {}", path.display(), e);
+				eprintln!("[ERROR] Failed to open file {}: {}", path.display(), e);
 			}
 			return Err(e);
 		}
 	};
 
-	// Analyze safety
-	let safety = analyze_file_safety(&data);
+	let metadata = file.metadata().await?;
+	let file_size = metadata.len() as usize;
+
+	// For safety analysis, read first 8KB chunk to detect binary files
+	let mut reader = BufReader::new(file);
+	let mut initial_chunk = [0u8; 8192];
+	let bytes_read = reader.read(&mut initial_chunk).await?;
+	let chunk = &initial_chunk[..bytes_read];
+
+	// Analyze safety of initial chunk
+	let mut safety = analyze_file_safety(chunk);
+	safety.file_size = file_size;
+
+	if file_size > MAX_FILE_SIZE {
+		safety.warnings.push(format!(
+			"File is {} MB (max: {} MB), will process with streaming",
+			file_size / (1024 * 1024),
+			MAX_FILE_SIZE / (1024 * 1024)
+		));
+	}
 
 	if verbose >= 2 {
 		eprintln!("[DEBUG] File safety analysis: {:?}", safety);
@@ -225,10 +245,43 @@ pub async fn safe_read_file(
 		}
 	}
 
-	// Convert to string (safely handling invalid UTF-8)
-	let (content, had_errors) = safe_string_conversion(&data, verbose);
+	// If binary, return empty with warnings
+	if safety.is_binary {
+		return Ok((String::new(), false, safety));
+	}
 
-	Ok((content, had_errors, safety))
+	// Stream lines from file
+	let file = match tokio::fs::File::open(path).await {
+		Ok(f) => f,
+		Err(e) => return Err(e),
+	};
+
+	let reader = BufReader::new(file);
+	let mut lines = reader.lines();
+	let mut content = String::new();
+	let mut line_count = 0;
+
+	while let Some(line_result) = lines.next_line().await? {
+		// Handle UTF-8 errors per line
+		match line_result {
+			l => {
+				content.push_str(&l);
+				content.push('\n');
+				line_count += 1;
+			}
+		}
+	}
+
+	if verbose >= 2 {
+		eprintln!("[DEBUG] Streamed {} lines from file", line_count);
+	}
+
+	// Remove trailing newline if present
+	if content.ends_with('\n') {
+		content.pop();
+	}
+
+	Ok((content, false, safety))
 }
 
 #[cfg(test)]

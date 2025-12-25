@@ -80,7 +80,6 @@ fn sql_statements() -> Vec<&'static str> {
 			file_id TEXT PRIMARY KEY,
 			original_filename TEXT NOT NULL,
 			sha256_hash TEXT NOT NULL UNIQUE,
-			blake3_hash TEXT,
 			file_size INTEGER NOT NULL,
 			alternate_names TEXT,
 			processing_status TEXT,
@@ -115,6 +114,33 @@ fn sql_statements() -> Vec<&'static str> {
 			PRIMARY KEY (file_id, subject_hash, anomaly_type),
 			FOREIGN KEY (file_id) REFERENCES file_metadata(file_id)
 		)",
+		"CREATE TABLE IF NOT EXISTS rainbow_tables (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			plaintext TEXT NOT NULL,
+			md5 TEXT NOT NULL,
+			sha1 TEXT NOT NULL,
+			sha256 TEXT NOT NULL,
+			sha512 TEXT NOT NULL,
+			ntlm TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)",
+		"CREATE TABLE IF NOT EXISTS rainbow_table_file_signatures (
+			filename TEXT PRIMARY KEY,
+			file_md5_signature TEXT NOT NULL,
+			last_checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)",
+		"CREATE TABLE IF NOT EXISTS seed_metadata (
+			id INTEGER PRIMARY KEY,
+			seed_path TEXT NOT NULL UNIQUE,
+			created_at INTEGER NOT NULL,
+			file_signature BLOB NOT NULL,
+			file_manifest TEXT NOT NULL,
+			total_rows INTEGER NOT NULL,
+			unique_addresses INTEGER NOT NULL,
+			verification_count INTEGER NOT NULL DEFAULT 0,
+			last_verified_at INTEGER,
+			CONSTRAINT seed_path_unique UNIQUE (seed_path)
+		)",
 		"CREATE INDEX IF NOT EXISTS idx_normalized_address_hash ON normalized_rows(address_hash)",
 		"CREATE INDEX IF NOT EXISTS idx_normalized_credential_hash ON \
 		 normalized_rows(credential_hash)",
@@ -123,5 +149,10 @@ fn sql_statements() -> Vec<&'static str> {
 		"CREATE INDEX IF NOT EXISTS idx_breaches_canonical ON address_breaches(canonical_hash)",
 		"CREATE INDEX IF NOT EXISTS idx_cooccurrence_both ON \
 		 address_cooccurrence(canonical_hash_1, canonical_hash_2)",
+		"CREATE INDEX IF NOT EXISTS idx_rainbow_md5 ON rainbow_tables(md5)",
+		"CREATE INDEX IF NOT EXISTS idx_rainbow_sha1 ON rainbow_tables(sha1)",
+		"CREATE INDEX IF NOT EXISTS idx_rainbow_sha256 ON rainbow_tables(sha256)",
+		"CREATE INDEX IF NOT EXISTS idx_rainbow_sha512 ON rainbow_tables(sha512)",
+		"CREATE INDEX IF NOT EXISTS idx_rainbow_ntlm ON rainbow_tables(ntlm)",
 	]
 }

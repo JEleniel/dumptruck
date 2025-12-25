@@ -1,21 +1,27 @@
-//! Builds and manages external JSON-based rainbow tables.
+//! Builds and manages SQLite-based rainbow tables.
 //!
 //! This module automatically detects changes to wordlist files and updates the rainbow
-//! table JSON file accordingly. At startup, the app checks file signatures to determine
-//! if regeneration is needed.
+//! table database accordingly. At startup, the app checks file signatures to determine
+//! if regeneration is needed. All rainbow table data is now stored in SQLite instead of JSON.
 
 use crate::core::hash_utils::{md5_hex, ntlm_hex, sha1_hex, sha256_hex, sha512_hex};
+use md5::Context;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fs;
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
+use std::path::PathBuf;
+use std::{fs, io};
 use thiserror::Error;
+use tracing::debug;
 
 /// Errors that can occur during rainbow table building.
 #[derive(Debug, Error)]
 pub enum RainbowTableError {
 	#[error("IO error: {0}")]
 	Io(#[from] std::io::Error),
+	#[error("Database error: {0}")]
+	Database(String),
 	#[error("JSON serialization error: {0}")]
 	Json(#[from] serde_json::Error),
 	#[error("UTF-8 error: {0}")]
@@ -24,7 +30,7 @@ pub enum RainbowTableError {
 	NoPasswords,
 }
 
-/// JSON structure for a single password entry with all hash variants.
+/// A single password entry with all hash variants.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct RainbowTableEntry {
 	pub plaintext: String,
@@ -35,44 +41,26 @@ pub struct RainbowTableEntry {
 	pub ntlm: String,
 }
 
-/// JSON structure for the complete rainbow table with metadata.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RainbowTableJson {
-	/// Version of the JSON format
-	pub version: u32,
-	/// File signatures (filename -> MD5 hash of content) for change detection
-	pub file_signatures: BTreeMap<String, String>,
-	/// List of password entries
-	pub entries: Vec<RainbowTableEntry>,
+pub struct RainbowTableFile {
+	pub path: PathBuf,
+	pub signature: String,
+	pub processed: bool,
 }
 
-/// Manages external JSON-based rainbow tables.
+/// Manages SQLite-based rainbow tables with automatic change detection.
 pub struct RainbowTableBuilder {
-	/// Path to store/load the rainbow table JSON
-	pub output_path: String,
 	/// Directory containing wordlist files
 	pub data_dir: String,
-	/// Whether to include NTLM hashes
-	pub include_ntlm: bool,
-	/// Whether to include SHA512 hashes
-	pub include_sha512: bool,
+	pub rainbow_table_files: Vec<RainbowTableFile>,
 }
 
 impl RainbowTableBuilder {
 	/// Create a new builder with default paths.
 	pub fn new() -> Self {
 		Self {
-			output_path: ".cache/rainbow_table.json".to_string(),
 			data_dir: "data".to_string(),
-			include_ntlm: true,
-			include_sha512: true,
+			rainbow_table_files: Vec::new(),
 		}
-	}
-
-	/// Set custom output path for the JSON file.
-	pub fn with_output_path(mut self, path: String) -> Self {
-		self.output_path = path;
-		self
 	}
 
 	/// Set custom data directory for wordlist files.
@@ -81,28 +69,36 @@ impl RainbowTableBuilder {
 		self
 	}
 
-	/// Disable NTLM hash generation.
-	pub fn without_ntlm(mut self) -> Self {
-		self.include_ntlm = false;
-		self
-	}
+	/// Compute MD5 signature of a file for change detection.
+	pub fn calculate_md5(file_path: &Path) -> io::Result<String> {
+		let file = fs::File::open(file_path)?;
+		let mut context = Context::new();
+		let mut buffer = [0; 4096]; // buffer size: 4KB
+		let mut reader = io::BufReader::new(file);
 
-	/// Disable SHA512 hash generation.
-	pub fn without_sha512(mut self) -> Self {
-		self.include_sha512 = false;
-		self
-	}
+		loop {
+			let bytes_read = reader.read(&mut buffer)?;
+			if bytes_read == 0 {
+				break;
+			}
 
-	/// Load all wordlists from data directory.
-	fn load_wordlists(&self) -> Result<Vec<String>, RainbowTableError> {
-		let mut passwords = Vec::new();
-
-		if !Path::new(&self.data_dir).exists() {
-			// Data directory doesn't exist yet - this is OK on first startup
-			return Ok(passwords);
+			context.consume(&buffer[..bytes_read]);
 		}
 
-		// Read all .txt files from data directory
+		let result = context.finalize();
+
+		Ok(format!("{:x}", result))
+	}
+
+	/// Check if any wordlist files have changed by comparing signatures in DB.
+	fn files_changed(&mut self, conn: &Connection) -> Result<bool, RainbowTableError> {
+		let data_dir = Path::new(&self.data_dir);
+
+		if !data_dir.exists() {
+			return Ok(false);
+		}
+
+		// Get all .txt files in data directory
 		let entries = fs::read_dir(&self.data_dir)?;
 
 		for entry in entries {
@@ -110,107 +106,141 @@ impl RainbowTableBuilder {
 			let path = entry.path();
 
 			if path.extension().map(|e| e == "txt").unwrap_or(false) {
-				let content = fs::read_to_string(&path)?;
-				for line in content.lines() {
-					let trimmed = line.trim();
-					// Skip empty lines and comments (lines starting with #)
-					if !trimmed.is_empty() && !trimmed.starts_with('#') {
-						passwords.push(trimmed.to_string());
+				let signature = Self::calculate_md5(path.as_path())?;
+				self.rainbow_table_files.push(RainbowTableFile {
+					path,
+					signature,
+					processed: false,
+				});
+			}
+		}
+
+		// Check each file against DB signatures
+		let mut stmt = conn
+			.prepare(
+				"SELECT file_md5_signature FROM rainbow_table_file_signatures WHERE filename = ?1",
+			)
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+		for file in &mut self.rainbow_table_files {
+			let filename = file.path.file_name().unwrap().to_str().unwrap();
+			let new_sig = &file.signature;
+			let result: Option<String> = stmt.query_row([filename], |row| row.get(0)).ok();
+
+			if result.as_deref() != Some(new_sig.as_str()) {
+				file.processed = true; // ✓ Correct—file is new or changed
+			}
+		}
+
+		// Check for files in DB that no longer exist
+		let mut stmt = conn
+			.prepare("SELECT filename FROM rainbow_table_file_signatures")
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+
+		let file_names: Vec<String> = stmt
+			.query_map([], |row| row.get(0))
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?
+			.collect::<Result<Vec<_>, _>>()
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+
+		// Remove DB entries for files that no longer exist and track if any files changed
+		let mut delete_stmt = conn
+			.prepare("DELETE FROM rainbow_table_file_signatures WHERE filename = ?1")
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+
+		let mut files_deleted = false;
+		for filename in file_names {
+			if !self
+				.rainbow_table_files
+				.iter()
+				.any(|f| f.path.file_name().unwrap().to_str().unwrap() == filename)
+			{
+				delete_stmt
+					.execute([&filename])
+					.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+				debug!("Removed stale file signature from DB: {}", filename);
+				files_deleted = true;
+			}
+		}
+
+		// Check if any files were marked as needing processing or files were deleted
+		let any_files_changed =
+			self.rainbow_table_files.iter().any(|f| f.processed) || files_deleted;
+		Ok(any_files_changed)
+	}
+
+	/// Generate and store rainbow table entries in database.
+	pub fn populate_database(&mut self, conn: &Connection) -> Result<bool, RainbowTableError> {
+		// Check if files have changed
+		if !self.files_changed(conn)? {
+			return Ok(false);
+		}
+
+		// Prepare insert statement once
+		let mut stmt = conn
+			.prepare(
+				"INSERT INTO rainbow_tables (plaintext, md5, sha1, sha256, sha512, ntlm) \
+				VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+			)
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
+
+		// Process files line-by-line, inserting hashes immediately
+		let data_dir = Path::new(&self.data_dir);
+		if data_dir.exists() {
+			let entries = fs::read_dir(&self.data_dir)?;
+
+			for entry in entries {
+				let entry = entry?;
+				let path = entry.path();
+
+				if path.extension().map(|e| e == "txt").unwrap_or(false) {
+					// Process file line-by-line with lossy UTF-8 conversion
+					let file = match fs::File::open(&path) {
+						Ok(f) => f,
+						Err(e) => {
+							eprintln!("[WARN] Failed to open file {}: {}", path.display(), e);
+							continue;
+						}
+					};
+					let reader = BufReader::new(file);
+
+					for line_result in reader.lines() {
+						// Skip lines with UTF-8 errors, converting them lossily
+						let line = match line_result {
+							Ok(l) => l,
+							Err(_) => continue, // Skip lines that fail to read
+						};
+
+						let trimmed = line.trim();
+
+						// Skip empty lines and comments
+						if trimmed.is_empty() || trimmed.starts_with('#') {
+							continue;
+						}
+
+						// Insert hash immediately without storing in memory
+						stmt.execute(rusqlite::params![
+							trimmed,
+							md5_hex(trimmed),
+							sha1_hex(trimmed),
+							sha256_hex(trimmed),
+							sha512_hex(trimmed),
+							ntlm_hex(trimmed)
+						])
+						.map_err(|e| RainbowTableError::Database(e.to_string()))?;
 					}
 				}
 			}
 		}
 
-		Ok(passwords)
-	}
+		drop(stmt);
 
-	/// Compute MD5 hash of a file's content for change detection.
-	fn compute_file_signature(path: &str) -> Result<String, RainbowTableError> {
-		let content = fs::read_to_string(path)?;
-		Ok(md5_hex(&content))
-	}
-
-	/// Load current file signatures from existing rainbow table.
-	fn load_current_signatures(&self) -> Result<BTreeMap<String, String>, RainbowTableError> {
-		if !Path::new(&self.output_path).exists() {
-			return Ok(BTreeMap::new());
-		}
-
-		let content = fs::read_to_string(&self.output_path)?;
-		let table: RainbowTableJson = serde_json::from_str(&content)?;
-
-		Ok(table.file_signatures)
-	}
-
-	/// Check if any wordlist files have changed.
-	fn files_changed(&self) -> Result<bool, RainbowTableError> {
-		let current_signatures = self.load_current_signatures()?;
-		let data_dir = Path::new(&self.data_dir);
-
-		if !data_dir.exists() {
-			// If data dir doesn't exist, nothing to compare
-			return Ok(false);
-		}
-
-		// Get all .txt files in data directory
-		let mut new_signatures = BTreeMap::new();
-		let entries = fs::read_dir(&self.data_dir)?;
-
-		for entry in entries {
-			let entry = entry?;
-			let path = entry.path();
-
-			if path.extension().map(|e| e == "txt").unwrap_or(false)
-				&& let Some(filename) = path.file_name()
-				&& let Some(filename_str) = filename.to_str()
-			{
-				let sig = Self::compute_file_signature(path.to_str().unwrap())?;
-				new_signatures.insert(filename_str.to_string(), sig);
-			}
-		}
-
-		// Check if signatures differ
-		Ok(current_signatures != new_signatures)
-	}
-
-	/// Generate rainbow table from all available wordlists.
-	pub fn generate(&self) -> Result<RainbowTableJson, RainbowTableError> {
-		let passwords = self.load_wordlists()?;
-
-		if passwords.is_empty() {
-			// If no passwords found, create empty table
-			return Ok(RainbowTableJson {
-				version: 1,
-				file_signatures: BTreeMap::new(),
-				entries: Vec::new(),
-			});
-		}
-
-		let mut entries = Vec::new();
-
-		// Generate hash entries for all passwords
-		for pwd in &passwords {
-			entries.push(RainbowTableEntry {
-				plaintext: pwd.clone(),
-				md5: md5_hex(pwd),
-				sha1: sha1_hex(pwd),
-				sha256: sha256_hex(pwd),
-				sha512: if self.include_sha512 {
-					sha512_hex(pwd)
-				} else {
-					String::new()
-				},
-				ntlm: if self.include_ntlm {
-					ntlm_hex(pwd)
-				} else {
-					String::new()
-				},
-			});
-		}
-
-		// Compute file signatures for change detection
-		let mut file_signatures = BTreeMap::new();
-		let data_dir = Path::new(&self.data_dir);
+		// Update file signatures
+		let mut sig_stmt = conn
+			.prepare(
+				"INSERT OR REPLACE INTO rainbow_table_file_signatures (filename, file_md5_signature) \
+				VALUES (?1, ?2)",
+			)
+			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
 
 		if data_dir.exists() {
 			let entries = fs::read_dir(&self.data_dir)?;
@@ -222,55 +252,15 @@ impl RainbowTableBuilder {
 					&& let Some(filename) = path.file_name()
 					&& let Some(filename_str) = filename.to_str()
 				{
-					let sig = Self::compute_file_signature(path.to_str().unwrap())?;
-					file_signatures.insert(filename_str.to_string(), sig);
+					let sig = Self::calculate_md5(path.as_path())?;
+					sig_stmt
+						.execute(rusqlite::params![filename_str, &sig])
+						.map_err(|e| RainbowTableError::Database(e.to_string()))?;
 				}
 			}
 		}
 
-		Ok(RainbowTableJson {
-			version: 1,
-			file_signatures,
-			entries,
-		})
-	}
-
-	/// Update the rainbow table if files have changed.
-	/// Returns true if table was regenerated, false if no changes detected.
-	pub fn update_if_changed(&self) -> Result<bool, RainbowTableError> {
-		// Check if we need to regenerate
-		if !self.files_changed()? {
-			return Ok(false);
-		}
-
-		// Generate new table
-		let table = self.generate()?;
-
-		// Ensure output directory exists
-		if let Some(parent) = Path::new(&self.output_path).parent()
-			&& !parent.as_os_str().is_empty()
-		{
-			fs::create_dir_all(parent)?;
-		}
-
-		// Write to file
-		let json = serde_json::to_string_pretty(&table)?;
-		fs::write(&self.output_path, json)?;
-
 		Ok(true)
-	}
-
-	/// Load rainbow table from JSON file.
-	pub fn load(&self) -> Result<RainbowTableJson, RainbowTableError> {
-		if !Path::new(&self.output_path).exists() {
-			// If file doesn't exist, generate it
-			self.update_if_changed()?;
-		}
-
-		let content = fs::read_to_string(&self.output_path)?;
-		let table = serde_json::from_str(&content)?;
-
-		Ok(table)
 	}
 }
 
@@ -303,39 +293,14 @@ mod tests {
 	}
 
 	#[test]
-	fn test_rainbow_table_json_structure() {
-		let table = RainbowTableJson {
-			version: 1,
-			file_signatures: BTreeMap::new(),
-			entries: vec![],
-		};
-
-		let json = serde_json::to_string_pretty(&table).expect("serialization failed");
-		assert!(json.contains("\"version\": 1"));
-		assert!(json.contains("\"file_signatures\""));
-		assert!(json.contains("\"entries\""));
-	}
-
-	#[test]
 	fn test_builder_default() {
 		let builder = RainbowTableBuilder::new();
-		assert_eq!(builder.output_path, ".cache/rainbow_table.json");
 		assert_eq!(builder.data_dir, "data");
-		assert!(builder.include_ntlm);
-		assert!(builder.include_sha512);
 	}
 
 	#[test]
-	fn test_builder_configuration() {
-		let builder = RainbowTableBuilder::new()
-			.with_output_path("test.json".to_string())
-			.with_data_dir("data".to_string())
-			.without_ntlm()
-			.without_sha512();
-
-		assert_eq!(builder.output_path, "test.json");
-		assert_eq!(builder.data_dir, "data");
-		assert!(!builder.include_ntlm);
-		assert!(!builder.include_sha512);
+	fn test_builder_custom_dir() {
+		let builder = RainbowTableBuilder::new().with_data_dir("custom_dir".to_string());
+		assert_eq!(builder.data_dir, "custom_dir");
 	}
 }

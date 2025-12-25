@@ -25,7 +25,7 @@
 //!    - Pure SHA256 hashes (64 hex chars)
 //!    - Pure SHA512 hashes (128 hex chars)
 
-use std::{borrow::Cow, collections::HashSet, path::Path, sync::OnceLock};
+use std::{borrow::Cow, collections::HashSet, sync::OnceLock};
 
 /// Algorithm fingerprint for identifying hash types by pattern.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -81,70 +81,37 @@ pub struct WeakPasswordHash {
 /// Static rainbow table of weak passwords loaded from external JSON file.
 static RAINBOW_TABLE: OnceLock<Vec<WeakPasswordHash>> = OnceLock::new();
 
-/// Initialize the rainbow table from the JSON file.
-/// This is called at startup by main.rs.
-/// Automatically checks if wordlist files have changed and regenerates the JSON if needed.
+/// Initialize the rainbow table.
+/// This is called at startup by lib.rs.
+/// Rainbow table data is now loaded from the SQLite database during ingest,
+/// not from JSON files at startup.
 pub fn initialize() -> Result<(), String> {
-	use crate::enrichment::rainbow_table_builder::RainbowTableBuilder;
-
-	// Create builder with default paths
-	let builder = RainbowTableBuilder::new();
-
-	// Check if wordlist files have changed and update JSON if needed
-	match builder.update_if_changed() {
-		Ok(was_regenerated) => {
-			if was_regenerated {
-				eprintln!("[INFO] Rainbow table regenerated: wordlist files have changed");
-			}
-		}
-		Err(e) => {
-			eprintln!("[WARN] Failed to check/update rainbow table: {}", e);
-			// Continue anyway - we'll try to load existing table
-		}
-	}
-
-	// Now load the JSON file
-	let table = load_from_json().unwrap_or_default();
-	let _ = RAINBOW_TABLE.set(table);
+	// Initialize empty rainbow table; entries will be loaded from DB during ingest
+	let _ = RAINBOW_TABLE.set(Vec::new());
 	Ok(())
 }
 
-/// Load rainbow table from JSON file.
-fn load_from_json() -> Result<Vec<WeakPasswordHash>, String> {
-	let json_path = ".cache/rainbow_table.json";
+/// Populate the SQLite rainbow table database with weak password hashes.
+/// This should be called after the database is initialized (e.g., during ingest setup).
+/// Returns true if the table was regenerated, false if hashes were already current.
+pub fn populate_database(conn: &rusqlite::Connection) -> Result<bool, String> {
+	use crate::enrichment::rainbow_table_builder::RainbowTableBuilder;
 
-	// Try to load existing JSON file
-	if Path::new(json_path).exists() {
-		let content = std::fs::read_to_string(json_path)
-			.map_err(|e| format!("Failed to read rainbow table JSON: {}", e))?;
+	let mut builder = RainbowTableBuilder::new();
 
-		let table: crate::enrichment::rainbow_table_builder::RainbowTableJson =
-			serde_json::from_str(&content)
-				.map_err(|e| format!("Failed to parse rainbow table JSON: {}", e))?;
-
-		// Convert JSON entries to WeakPasswordHash
-		let hashes: Vec<WeakPasswordHash> = table
-			.entries
-			.into_iter()
-			.map(|entry| WeakPasswordHash {
-				plaintext: Cow::Owned(entry.plaintext),
-				md5: Cow::Owned(entry.md5),
-				sha1: Cow::Owned(entry.sha1),
-				sha256: Cow::Owned(entry.sha256),
-				sha512: Cow::Owned(entry.sha512),
-				ntlm: Cow::Owned(entry.ntlm),
-			})
-			.collect();
-
-		eprintln!(
-			"[INFO] Loaded {} weak password hashes from rainbow table",
-			hashes.len()
-		);
-		Ok(hashes)
-	} else {
-		// If no JSON file exists yet, return empty table
-		eprintln!("[INFO] No rainbow table JSON found at {}", json_path);
-		Ok(Vec::new())
+	match builder.populate_database(conn) {
+		Ok(was_regenerated) => {
+			if was_regenerated {
+				eprintln!("[INFO] Rainbow table database updated: wordlist files have changed");
+			} else {
+				eprintln!("[INFO] Rainbow table database is current (no changes detected)");
+			}
+			Ok(was_regenerated)
+		}
+		Err(e) => {
+			eprintln!("[WARN] Failed to populate rainbow table database: {}", e);
+			Err(format!("Failed to populate rainbow table database: {}", e))
+		}
 	}
 }
 

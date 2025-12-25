@@ -302,13 +302,12 @@ fn import_file_metadata(
 
 		let result = conn.execute(
 			"INSERT OR IGNORE INTO file_metadata (file_id, original_filename, sha256_hash, \
-			 blake3_hash, file_size, alternate_names, processing_status, created_at) VALUES (?1, \
-			 ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+			 file_size, alternate_names, processing_status, created_at) VALUES (?1, \
+			 ?2, ?3, ?4, ?5, ?6, ?7)",
 			rusqlite::params![
 				&record.file_id,
 				&record.original_filename,
 				&record.sha256_hash,
-				&record.blake3_hash,
 				record.file_size,
 				&record.alternate_names,
 				&record.processing_status,
