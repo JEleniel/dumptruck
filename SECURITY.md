@@ -10,8 +10,8 @@ We take security bugs seriously. We appreciate your efforts to responsibly discl
 
 Instead, please use one of these channels:
 
-- Use GitHub's security advisory feature: [Report a Vulnerability](https://github.com/{username}/{repo}/security/advisories/new)
-- For critical issues, you can encrypt your report using our [security team's PGP key](https://github.com/{username}.gpg)
+- Use GitHub's security advisory feature: [Report a Vulnerability](https://github.com/JEleniel/dumptruck/security/advisories/new)
+- For critical issues, you can encrypt your report using our [security team's PGP key](https://github.com/JEleniel.gpg)
 
 Please include the following information in your report:
 
@@ -30,7 +30,7 @@ When you submit a vulnerability report, our team will:
 3. Keep you informed about our progress
 4. Credit you in the security advisory (unless you prefer to remain anonymous)
 
-> **Note:** Replace `{username}` and `{repo}` in links with your GitHub username and repository name when using this template.
+> **Note:** Repository information is set to JEleniel/dumptruck
 
 ## Scope
 

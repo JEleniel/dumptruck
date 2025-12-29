@@ -65,10 +65,35 @@ This ensures that multiple email addresses referring to the same account (with d
 
 ## Configuration Merging
 
-Configuration values are loaded in the following order (later values override earlier):
+Configuration values are loaded in priority order (highest priority first):
 
-1. Configuration file (`config.json` or custom path)
-2. Environment variables (`DUMPTRUCK_HIBP_API_KEY`)
+1. **Command-line arguments** (for CLI mode only) – highest priority
+2. **Environment variables** (e.g., `DUMPTRUCK_HIBP_API_KEY`)
+3. **Configuration file** (`config.json` or custom path via `DUMPTRUCK_CONFIG`)
+4. **Default values** – lowest priority
+
+This means:
+
+- CLI arguments override everything else
+- Environment variables override file-based configuration
+- Configuration file values override defaults
+- Defaults are used only when no other source provides a value
+
+Example precedence resolution:
+
+```bash
+# Example 1: Using all sources
+export DUMPTRUCK_HIBP_API_KEY="env-key"           # From environment
+dumptruck --config config.json ingest data.csv    # From file: config.json
+
+# Result: Environment variable takes precedence → uses "env-key"
+
+# Example 2: CLI overrides environment
+export DUMPTRUCK_HIBP_API_KEY="env-key"
+dumptruck --hibp-key "cli-key" ingest data.csv
+
+# Result: CLI argument takes precedence → uses "cli-key"
+```
 
 ## Code Usage
 

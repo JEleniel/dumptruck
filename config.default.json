@@ -1,32 +1,29 @@
 {
 	"$schema": "./config.schema.json",
-	"oauth": {
-		"client_id": "YOUR_OAUTH_CLIENT_ID",
-		"client_secret": "YOUR_OAUTH_CLIENT_SECRET",
-		"discovery_url": "https://your-oauth-provider/.well-known/openid-configuration"
-	},
-	"api_keys": {
-		"hibp": {
-			"enabled": false,
-			"api_key": "YOUR_HIBP_API_KEY"
-		}
-	},
+	"api_keys": [{ "name": "api_name", "api_key": "your api key" }],
 	"services": {
+		"enable_embeddings": true,
 		"ollama": {
-			"enabled": false,
-			"host": "localhost",
-			"port": 11435
+			"url": "http://localhost:11434",
+			"vector_threshold": 0.85
 		}
 	},
-	"email_suffix_substitutions": {
-		"bofa.com": ["bankofamerica.com", "ml.com"],
-		"gmail.com": ["googlemail.com"],
-		"yahoo.com": ["ymail.com", "rocketmail.com"],
-		"microsoft.com": ["outlook.com", "hotmail.com", "live.com"],
-		"amazon.com": ["aws.amazon.com"]
+	"email_suffix_substitutions": [{ "original": "domain.com", "substitutes": ["d.com", "e.com"] }],
+	"paths": {
+		"temp_path": "/tmp/dumptruck",
+		"db_path": "~/.local/share/dumptruck/",
+		"seed_path": "./data/"
 	},
-	"working_directory": {
-		"path": "/tmp/dumptruck",
-		"verify_noexec": false
+	"server": {
+		"bind_addresses": ["0.0.0.0", "::"],
+		"port": 443,
+		"tls_cert_path": "/etc/tls/tls.crt",
+		"tls_key_path": "/etc/tls/tls.key",
+		"oauth": {
+			"client_id": "YOUR_OAUTH_CLIENT_ID",
+			"client_secret": "YOUR_OAUTH_CLIENT_SECRET",
+			"discovery_url": "https://your-oauth-provider/.well-known/openid-configuration",
+			"scopes": "openid, profile, email"
+		}
 	}
 }

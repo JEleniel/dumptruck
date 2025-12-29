@@ -150,7 +150,7 @@ Example `config.json`:
 ```json
 {
 	"hibp_api_key": "YOUR_KEY_HERE",
-	"email_domain_substitutions": {
+	"email_suffix_substitutions": {
 		"googlemail.com": "gmail.com",
 		"yahoo.co.uk": "yahoo.com"
 	}

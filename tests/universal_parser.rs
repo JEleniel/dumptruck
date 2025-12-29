@@ -9,7 +9,7 @@
 //! - XML structures
 //! - Mixed and edge cases
 
-use dumptruck::ingest::universal_parser::{json_to_rows, xml_to_rows};
+use dumptruck::analyze::universal_parser::{json_to_rows, xml_to_rows};
 use serde_json::json;
 
 // ============================================================================

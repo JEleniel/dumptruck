@@ -18,9 +18,9 @@ axum-server = { version = "0.8", features = ["tls-openssl", "tls-rustls"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
 config = { version = "0.15", features = [] }
+csv = "1.4.0"
 dirs = { version = "5.0" }
 ed25519-dalek = { version = "2.1", features = ["serde"] }
-glob = { version = "0.3" }
 hex = { version = "0.4", features = ["serde"] }
 http-body-util = { version = "0.1", features = ["full"] }
 hyper = { version = "1.6", features = ["full"] }

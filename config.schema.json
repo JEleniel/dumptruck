@@ -8,72 +8,52 @@
 			"type": "string",
 			"description": "Path to this schema file"
 		},
-		"oauth": {
-			"type": "object",
-			"description": "OAuth 2.0/OIDC configuration (optional, all fields default to empty)",
-			"properties": {
-				"client_id": {
-					"type": "string",
-					"description": "OAuth client ID"
-				},
-				"client_secret": {
-					"type": "string",
-					"description": "OAuth client secret"
-				},
-				"discovery_url": {
-					"type": "string",
-					"description": "OIDC discovery URL for automatic configuration"
-				}
-			},
-			"additionalProperties": false
-		},
 		"api_keys": {
-			"type": "object",
+			"type": "array",
 			"description": "Configuration for external API integrations",
-			"properties": {
-				"hibp": {
-					"type": "object",
-					"description": "Have I Been Pwned (HIBP) API configuration",
-					"properties": {
-						"enabled": {
-							"type": "boolean",
-							"description": "Enable HIBP enrichment (default: false)",
-							"default": false
-						},
-						"api_key": {
-							"type": "string",
-							"description": "HIBP API key (32-character hexadecimal string, required if enabled=true)"
-						}
+			"items": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Name of the API service"
 					},
-					"additionalProperties": false
-				}
+					"api_key": {
+						"type": "string",
+						"description": "API key for the service"
+					}
+				},
+				"required": ["name", "api_key"],
+				"additionalProperties": false,
+				"additionalItems": false
 			},
-			"additionalProperties": false
+			"additionalItems": false
 		},
 		"services": {
 			"type": "object",
 			"description": "Configuration for optional services",
 			"properties": {
+				"enable_embeddings": {
+					"type": "boolean",
+					"description": "Flag to enable or disable embeddings service",
+					"default": false
+				},
 				"ollama": {
 					"type": "object",
 					"description": "Ollama service configuration for vector similarity search",
 					"properties": {
-						"enabled": {
-							"type": "boolean",
-							"description": "Enable Ollama service (default: false)",
-							"default": false
-						},
-						"host": {
+						"url": {
 							"type": "string",
-							"description": "Ollama service host (default: localhost)",
-							"default": "localhost"
+							"format": "uri",
+							"description": "Ollama service URL",
+							"default": "http://localhost:11434"
 						},
-						"port": {
-							"type": "integer",
-							"description": "Ollama service port (default: 11435)",
-							"default": 11435,
-							"minimum": 1,
-							"maximum": 65535
+						"vector_threshold": {
+							"type": "number",
+							"description": "Similarity threshold for vector searches",
+							"default": 0.85,
+							"minimum": 0.0,
+							"maximum": 1.0
 						}
 					},
 					"additionalProperties": false
@@ -82,49 +62,100 @@
 			"additionalProperties": false
 		},
 		"email_suffix_substitutions": {
-			"type": "object",
+			"type": "array",
 			"description": "Email domain alias mappings for canonicalization",
-			"examples": [
-				{
-					"gmail.com": ["googlemail.com"],
-					"microsoft.com": ["outlook.com", "hotmail.com", "live.com"]
-				}
-			],
-			"additionalProperties": {
-				"type": "array",
-				"items": {
-					"type": "string"
-				}
-			}
-		},
-		"custom_passwords": {
-			"type": "object",
-			"description": "Custom plaintext passwords to check during detection",
-			"properties": {
-				"passwords": {
-					"type": "array",
-					"description": "List of plaintext passwords that will be hashed and checked",
-					"items": {
-						"type": "string"
+			"items": {
+				"type": "object",
+				"properties": {
+					"original": {
+						"type": "string",
+						"description": "Original email domain"
+					},
+					"substitutes": {
+						"type": "array",
+						"description": "List of substitute domains",
+						"items": {
+							"type": "string"
+						}
 					}
+				},
+				"required": ["original", "substitutes"],
+				"additionalProperties": false
+			},
+			"additionalItems": false,
+			"additionalProperties": false
+		},
+		"paths": {
+			"type": "object",
+			"description": "Locations to use for a variety of functions",
+			"properties": {
+				"temp_path": {
+					"type": ["string", "null"],
+					"description": "Absolute path to temporary directory (defaults to system temp if not specified)"
+				},
+				"db_path": {
+					"type": "string",
+					"description": "Path to the database file"
+				},
+				"seed_path": {
+					"type": "string",
+					"description": "Path to seed data files"
 				}
 			},
 			"additionalProperties": false
 		},
-		"working_directory": {
+		"server": {
 			"type": "object",
-			"description": "Configuration for isolated file processing and temporary storage",
+			"description": "Server configuration settings",
 			"properties": {
-				"path": {
-					"type": ["string", "null"],
-					"description": "Absolute path to working directory (defaults to system temp if not specified)"
+				"bind_addresses": {
+					"type": "array",
+					"description": "List of IP addresses to bind the server to",
+					"items": {
+						"type": "string"
+					}
 				},
-				"verify_noexec": {
-					"type": "boolean",
-					"description": "Verify working directory is mounted with noexec flag (default: true)",
-					"default": true
+				"port": {
+					"type": "integer",
+					"description": "Port number for the server to listen on",
+					"minimum": 1,
+					"maximum": 65535
+				},
+				"tls_cert_path": {
+					"type": "string",
+					"description": "Path to the TLS certificate file"
+				},
+				"tls_key_path": {
+					"type": "string",
+					"description": "Path to the TLS key file"
+				},
+				"oauth": {
+					"type": "object",
+					"description": "OAuth configuration for authentication",
+					"properties": {
+						"client_id": {
+							"type": "string",
+							"description": "OAuth client ID"
+						},
+						"client_secret": {
+							"type": "string",
+							"description": "OAuth client secret"
+						},
+						"discovery_url": {
+							"type": "string",
+							"format": "uri",
+							"description": "OAuth discovery URL"
+						},
+						"scopes": {
+							"type": "string",
+							"description": "OAuth scopes"
+						}
+					},
+					"required": ["client_id", "client_secret", "discovery_url"],
+					"additionalProperties": false
 				}
 			},
+			"required": ["oauth"],
 			"additionalProperties": false
 		}
 	},

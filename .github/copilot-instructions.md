@@ -53,6 +53,9 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * Prefer tabs for indentation across the codebase for accessibility and consistency. Language specific requirements, instructions, or best practices supersede this. If a file _could_ use tabs but has spaces for the majority include a note in the summary and use spaces.
 * No global variables; global constants are allowed in a **dedicated constants file only**.
 * Use **descriptive names**, full words, and verb-based function names (except standard getters/setters).
+* Tests must _prove_, in the mathemateical sense, that the code works as intended.
+* You MUST NOT declare code "Production Ready" because you are _always_ wrong.
+* Ensure that the code is wired and works as expected. No stubs, missing connections, etc.
 
 ## Acceptance Criteria
 
@@ -67,6 +70,9 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * Always end responses with a **5-10 bullet tl;dr style summary**. Include an estimate of the current context usage, as a percentage.
 * Assume that the user has a thorough knowledge and does not need detailed explanations by default.
 * External credentials and tools will be provided, e.g. Github authentication.
+* Assume that your firt response is a confabulation and completely review to ensure you have followed _all_ instructions thoroughly, not skipped any files, and have not made any mistakes.
+* DO NOT CREATE SUMMARY DOCUMENTS UNLESS SPECIFICALLY INSTRUCTED TO DO SO.
+* Never declare code "production ready" as you have no fucking clue what that means.
 
 ## Tooling
 
@@ -76,3 +82,5 @@ Refer to the your memory, the project [README.md](../README.md), and the project
 * Prefer MCP interaction over command line or shell tools.
 * Only run one command at a time; do not chain commands.
 * Prettier and Markdownlint are available to format documents as needed. Do not manually format unless necessary. Only use Markdownlint for Markdown, Prettier does not understand it.
+* Do NOT use multi-replace. It does not work and corrupts files.
+* Work on only one file at a time. Make surgical changes. Ensure that you are not worrupting the file as you edit it.

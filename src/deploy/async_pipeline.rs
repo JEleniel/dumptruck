@@ -6,11 +6,11 @@
 //! structure as the synchronous Pipeline but with support for these advanced features.
 
 use crate::{
+	analyze::adapters::FormatAdapter,
 	core::hash_utils,
 	enrichment::{HibpClient, ollama::OllamaClient},
-	ingest::adapters::FormatAdapter,
 	normalization,
-	storage::{StorageAdapter, db},
+	data::{StorageAdapter, db},
 };
 
 /// Configuration for the async pipeline.
@@ -21,6 +21,10 @@ pub struct AsyncPipelineConfig {
 	pub enable_hibp: bool,
 	/// Threshold for vector similarity when detecting near-duplicates (0.0-1.0)
 	pub vector_similarity_threshold: f32,
+	/// Optional date for ingest (YYYYMMDD format)
+	pub date: Option<String>,
+	/// Optional target/source name for ingest
+	pub target: Option<String>,
 }
 
 impl Default for AsyncPipelineConfig {
@@ -29,6 +33,8 @@ impl Default for AsyncPipelineConfig {
 			enable_embeddings: false,
 			enable_hibp: false,
 			vector_similarity_threshold: 0.85,
+			date: None,
+			target: None,
 		}
 	}
 }
@@ -409,7 +415,7 @@ mod tests {
 	use std::collections::BTreeSet;
 
 	use super::*;
-	use crate::ingest::adapters::CsvAdapter;
+	use crate::analyze::adapters::CsvAdapter;
 
 	struct TestStorage {
 		rows: Vec<Vec<String>>,
@@ -489,6 +495,8 @@ mod tests {
 			enable_embeddings: false,
 			enable_hibp: false,
 			vector_similarity_threshold: 0.85,
+			date: None,
+			target: None,
 		};
 
 		let pipeline = AsyncPipeline::with_config(adapter, store, config);
@@ -514,6 +522,8 @@ mod tests {
 			enable_embeddings: false,
 			enable_hibp: false,
 			vector_similarity_threshold: 0.85,
+			date: None,
+			target: None,
 		};
 
 		let pipeline = AsyncPipeline::with_config(adapter, store, config);

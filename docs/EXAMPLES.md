@@ -528,7 +528,7 @@ Use config file for repeated operations:
 cat > analysis_config.json << 'EOF'
 {
   "hibp_api_key": "your-key-here",
-  "email_domain_substitutions": {
+  "email_suffix_substitutions": {
     "googlemail.com": "gmail.com",
     "yahoo.co.uk": "yahoo.com",
     "hotmail.co.uk": "hotmail.com"

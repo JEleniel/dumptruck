@@ -4,7 +4,7 @@
 //! Supports arbitrarily large file uploads via streaming (raw binary or chunked transfer).
 
 use crate::network::oauth::OAuthProvider;
-use crate::storage::job_queue::{Job, JobQueue, JobStatus};
+use crate::data::job_queue::{Job, JobQueue, JobStatus};
 use axum::{
 	Json, Router,
 	extract::{Path, Query, State},
@@ -63,6 +63,10 @@ pub struct AppState {
 pub struct IngestRequest {
 	pub filename: String,
 	pub file_size_bytes: u64,
+	#[serde(default)]
+	pub date: Option<String>,
+	#[serde(default)]
+	pub target: Option<String>,
 }
 
 /// Ingest response
@@ -157,6 +161,30 @@ async fn ingest_file(
 		return Err(ServerError::BadRequest(
 			"file_size_bytes must be > 0".to_string(),
 		));
+	}
+
+	// Validate date format (YYYYMMDD) if provided
+	if let Some(date_str) = &req.date {
+		if date_str.len() != 8 {
+			return Err(ServerError::BadRequest(
+				"date must be in YYYYMMDD format (8 digits)".to_string(),
+			));
+		}
+
+		let date_num: u32 = date_str
+			.parse()
+			.map_err(|_| ServerError::BadRequest("date must be numeric YYYYMMDD".to_string()))?;
+
+		let year = date_num / 10000;
+		let month = (date_num % 10000) / 100;
+		let day = date_num % 100;
+
+		if !(1900..=2100).contains(&year) || !(1..=12).contains(&month) || !(1..=31).contains(&day)
+		{
+			return Err(ServerError::BadRequest(
+				"invalid date: year must be 1900-2100, month 01-12, day 01-31".to_string(),
+			));
+		}
 	}
 
 	// Enqueue job

@@ -1,4 +1,12 @@
+use std::os::linux::process;
+
 #[tokio::main]
 async fn main() {
-	dumptruck::run().await;
+	if let Err(e) = dumptruck::run().await {
+		error!(
+			"An application error has occurred and the application will exit: {}",
+			e
+		);
+		process::exit(1);
+	}
 }

@@ -1,6 +1,6 @@
 //! Simple ingest -> normalize -> enrich -> store pipeline and integration tests.
 
-use crate::{ingest::adapters::FormatAdapter, normalization, storage::StorageAdapter};
+use crate::{analyze::adapters::FormatAdapter, normalization, data::StorageAdapter};
 
 /// Pipeline wires together adapter and storage.
 pub struct Pipeline<A: FormatAdapter, S: StorageAdapter> {
@@ -204,7 +204,7 @@ mod tests {
 	use std::collections::BTreeSet;
 
 	use super::*;
-	use crate::{ingest::adapters::CsvAdapter, storage::StorageAdapter};
+	use crate::{analyze::adapters::CsvAdapter, data::StorageAdapter};
 
 	struct InMemoryStorage {
 		rows: Vec<Vec<String>>,
@@ -263,14 +263,14 @@ mod tests {
 
 		fn insert_address_breach(
 			&mut self,
-			_record: &crate::storage::db::BreachRecord<'_>,
+			_record: &crate::data::db::BreachRecord<'_>,
 		) -> std::io::Result<bool> {
 			Ok(false)
 		}
 
 		fn insert_custody_record(
 			&mut self,
-			_record: &crate::storage::db::CustodyRecord<'_>,
+			_record: &crate::data::db::CustodyRecord<'_>,
 		) -> std::io::Result<bool> {
 			Ok(false)
 		}
@@ -298,7 +298,7 @@ mod tests {
 
 	#[test]
 	fn pipeline_boxed_objects() {
-		use crate::{ingest::adapters::CsvAdapter, storage::FsStorage};
+		use crate::{analyze::adapters::CsvAdapter, data::FsStorage};
 
 		// Use actual FsStorage into a temp file to verify persisted enriched rows
 		let csv = "name,email\nAlice,ALICE@Example.COM\nBob,bob@example.com\n";

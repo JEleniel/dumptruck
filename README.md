@@ -15,7 +15,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - **Smart Normalization** — Intelligently canonicalizes data across Unicode variants, email aliases, and international formats
 - **Privacy-First Architecture** — Historical data stored only as non-reversible hashes; zero exposure even if the database is compromised
 - **Distributed Deduplication** — Peer discovery and Bloom filter sync allow multiple instances to share intelligence without data exposure
-- **Production Ready** — 143+ tests, zero unsafe code, comprehensive audit logging, and operational runbooks included
+- **Production Ready** — 240 tests, zero unsafe code, comprehensive audit logging, and operational runbooks included
 
 ---
 
@@ -123,7 +123,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 
 ```bash
 # Clone and enter the repository
-git clone https://github.com/yourusername/dumptruck.git
+git clone https://github.com/JEleniel/dumptruck.git
 cd dumptruck
 
 # Run tests to verify build
@@ -222,7 +222,7 @@ Raw Data → Safe Ingest → Normalization → Deduplication → Enrichment → 
 - **Streaming-first**: Constant memory usage regardless of input size
 - **Extensible**: Plugin architecture for formats, enrichment, and storage backends
 - **Observable**: Structured logging, metrics, and audit events built-in
-- **Production-ready**: 143+ tests, zero unsafe code, comprehensive error handling
+- **Production-ready**: 240 tests, zero unsafe code, comprehensive error handling
 
 **See [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for detailed system design and component documentation.**
 

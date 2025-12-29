@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 /// Integration test for AsyncPipeline with SQLite storage backend
 use dumptruck::{
+	analyze::adapters::CsvAdapter,
+	data::StorageAdapter,
 	deploy::async_pipeline::{AsyncPipeline, AsyncPipelineConfig},
-	ingest::adapters::CsvAdapter,
-	storage::StorageAdapter,
 };
 
 struct TestStorage {
@@ -58,7 +58,7 @@ impl StorageAdapter for TestStorage {
 
 	fn insert_custody_record(
 		&mut self,
-		_record: &dumptruck::storage::CustodyRecord<'_>,
+		_record: &dumptruck::data::CustodyRecord<'_>,
 	) -> std::io::Result<bool> {
 		Ok(false)
 	}
@@ -80,6 +80,8 @@ charlie@test.com,pass123
 		enable_embeddings: false, // Disabled since we don't have Ollama running in tests
 		enable_hibp: false,       // Disabled since we don't have internet in tests
 		vector_similarity_threshold: 0.85,
+		date: None,
+		target: None,
 	};
 
 	let pipeline = AsyncPipeline::with_config(adapter, storage, config);
@@ -169,6 +171,8 @@ alice@example.com,pass123
 		enable_embeddings: false,
 		enable_hibp: false,
 		vector_similarity_threshold: 0.85,
+		date: None,
+		target: None,
 	};
 
 	let pipeline = AsyncPipeline::with_config(adapter, storage, config);
@@ -218,6 +222,8 @@ bob@example.org
 		enable_embeddings: false,
 		enable_hibp: false,
 		vector_similarity_threshold: 0.85,
+		date: None,
+		target: None,
 	};
 
 	let pipeline = AsyncPipeline::with_config(adapter, storage, config);

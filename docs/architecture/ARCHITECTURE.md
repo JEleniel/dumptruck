@@ -25,7 +25,7 @@ This document covers high-level structure, major components, and interactions. D
 
 ### Data Pipeline
 
-![Pipeline](diagrams/pipeline.md)
+[Pipeline](diagrams/pipeline.md)
 
 The primary data pipeline moves input files through 15 comprehensive stages:
 
@@ -47,7 +47,7 @@ The primary data pipeline moves input files through 15 comprehensive stages:
 
 ### Component Architecture
 
-![Components](diagrams/components.md)
+[Components](diagrams/components.md)
 
 The runtime consists of:
 
@@ -58,7 +58,7 @@ The runtime consists of:
 
 ### Deployment Architecture
 
-![Deployment](diagrams/deployment.md)
+[Deployment](diagrams/deployment.md)
 
 Production deployments feature:
 
@@ -227,7 +227,7 @@ See [SECURITY.md](SECURITY.md) for operational security procedures.
 
 ## Operational Readiness
 
-✅ **Code Quality**: All tests passing (123 unit + integration tests), zero unsafe blocks
+✅ **Code Quality**: All tests passing (240 unit + integration tests), zero unsafe blocks
 
 ✅ **CI/CD**: Full GitHub Actions pipeline with linting, testing, security scanning, multi-platform builds
 

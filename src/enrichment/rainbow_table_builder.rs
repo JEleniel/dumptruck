@@ -28,6 +28,8 @@ pub enum RainbowTableError {
 	Utf8(#[from] std::string::FromUtf8Error),
 	#[error("No passwords found to hash")]
 	NoPasswords,
+	#[error("Invalid file path: {0}")]
+	InvalidPath(String),
 }
 
 /// A single password entry with all hash variants.
@@ -122,7 +124,13 @@ impl RainbowTableBuilder {
 			)
 			.map_err(|e| RainbowTableError::Database(e.to_string()))?;
 		for file in &mut self.rainbow_table_files {
-			let filename = file.path.file_name().unwrap().to_str().unwrap();
+			let filename = file
+				.path
+				.file_name()
+				.and_then(|n| n.to_str())
+				.ok_or_else(|| {
+					RainbowTableError::InvalidPath(format!("Invalid file path: {:?}", file.path))
+				})?;
 			let new_sig = &file.signature;
 			let result: Option<String> = stmt.query_row([filename], |row| row.get(0)).ok();
 
@@ -149,11 +157,15 @@ impl RainbowTableBuilder {
 
 		let mut files_deleted = false;
 		for filename in file_names {
-			if !self
-				.rainbow_table_files
-				.iter()
-				.any(|f| f.path.file_name().unwrap().to_str().unwrap() == filename)
-			{
+			let file_exists = self.rainbow_table_files.iter().any(|f| {
+				f.path
+					.file_name()
+					.and_then(|n| n.to_str())
+					.map(|n| n == filename)
+					.unwrap_or(false)
+			});
+
+			if !file_exists {
 				delete_stmt
 					.execute([&filename])
 					.map_err(|e| RainbowTableError::Database(e.to_string()))?;
