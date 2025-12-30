@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::database::migrationtrait::MigrationTrait;
+use crate::data::database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection};
 
 pub struct Identities {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for Identities {
-	fn create(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		conn.execute_batch(
 			"
 			CREATE TABLE IF NOT EXISTS ids (
@@ -19,20 +19,22 @@ impl MigrationTrait for Identities {
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
 			);",
-		)
+		)?;
+		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		Self.create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
-		conn.execute_batch("DROP TABLE IF EXISTS ids;")
+	fn downgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
+		conn.execute_batch("DROP TABLE IF EXISTS ids;")?;
+		Ok(())
 	}
 }
 
 impl Identities {
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -42,14 +44,14 @@ impl Identities {
 			.lock()
 			.await
 			.prepare("SELECT 1 FROM ids WHERE value = ?1;")?;
-		let count = stmt.query_row([value], |row| row.get(0))?;
+		let count = stmt.query_row(params![value], |row| row.get(0))?;
 		Ok(count > 0)
 	}
 
 	pub async fn add(&self, value: &str) -> Result<(), super::DatabaseError> {
 		self.conn.lock().await.execute(
 			"INSERT OR IGNORE INTO ids (value) VALUES (?1);",
-			rusqlite::params![value],
+			params![value],
 		)?;
 		Ok(())
 	}
@@ -57,14 +59,14 @@ impl Identities {
 	pub async fn seen(&self, value: &str) -> Result<(), super::DatabaseError> {
 		self.conn.lock().await.execute(
 			"UPDATE ids SET last_seen = CURRENT_TIMESTAMP WHERE value = ?1;",
-			rusqlite::params![value],
+			params![value],
 		)?;
 		Ok(())
 	}
 
 	pub async fn get_all(&self) -> Result<Vec<String>, super::DatabaseError> {
 		let mut stmt = self.conn.lock().await.prepare("SELECT value FROM ids;")?;
-		let ids_iter = stmt.query_map([], |row| row.get(0))?;
+		let ids_iter = stmt.query_map(params![], |row| row.get(0))?;
 
 		let mut ids = Vec::new();
 		for id_result in ids_iter {
@@ -78,7 +80,7 @@ impl Identities {
 		{
 			let mut stmt = tx.prepare("INSERT OR IGNORE INTO ids (value) VALUES (?1);")?;
 			for value in values {
-				stmt.execute([value])?;
+				stmt.execute(params![value])?;
 			}
 		}
 		tx.commit()?;

@@ -1,49 +1,34 @@
-//! Seed manager - verifies signatures and imports seed data on startup.
-
-use std::{fs::File, path::PathBuf};
-
+//! Seed manager - implements the "seed" command
+use super::SeedError;
 use crate::{
 	common::Hash,
 	data::Database,
 	datafile::DataFile,
 	seed::{SeedArgs, SeedImportStats},
 };
+use std::{fs::File, path::PathBuf};
 
-use super::SeedError;
-
-/// Manager of seed databases
+/// Implements the "seed" command
 pub struct SeedManager {
 	seed_db_path: PathBuf,
 	seed_db_signature: Option<String>,
 	seed_db: Database,
 	stats: SeedImportStats,
-	files: Vec<DataFile>,
-	known_files: Vec<DataFile>,
 }
 
 impl SeedManager {
-	pub async fn run(args: SeedArgs) -> Result<(), SeedError> {
-		let manager = SeedManager::new(args.seed_db_path)?;
-
-		if manager.changed()? {
-			manager.generate(args.source_path.clone())?;
-		}
-
-		Ok(())
-	}
-
 	/// Create a new seed manager
 	fn new(seed_db_path: PathBuf) -> Self {
-		let seed_db_path = seed_db_path.join("seed.db");
-
-		// Hash an existing seed db
-		let hash = if File::exists(seed_db_path) {
-			Ok(Hash::calculate_md5(&mut File::open(seed_db_path)?)?)
-		} else {
-			Ok(None)
-		};
+		if !seed_db_path.ends_with(".db") {
+			let seed_db_path = seed_db_path.join("seed.db");
+		}
 
 		let seed_db = Database::new(seed_db_path.clone());
+		if Let(is_valid) = seed_db.validate() {
+			if !is_valid {
+				return Err(SeedError::InvalidDatabase);
+			}
+		}
 		seed_db.open_or_create()?;
 
 		Self {

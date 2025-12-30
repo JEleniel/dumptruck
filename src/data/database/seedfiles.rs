@@ -1,36 +1,41 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::{DatabaseError, database::migrationtrait::MigrationTrait};
+use crate::data::{
+	DatabaseError,
+	database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection},
+};
 
 pub struct SeedFiles {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for SeedFiles {
-	fn create(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		conn.execute_batch(
 			"CREATE TABLE IF NOT EXISTS seed_files (
 				id INT PRIMARY KEY AUTOINCREMENT,
 				file_name TEXT,
 				signature TEXT UNIQUE
 			);",
-		)?
+		)?;
+		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		Self::create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
-		conn.execute_batch("DROP TABLE IF EXISTS seed_files;")?
+	fn downgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
+		conn.execute_batch("DROP TABLE IF EXISTS seed_files;")?;
+		Ok(())
 	}
 }
 
 impl SeedFiles {
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -40,14 +45,14 @@ impl SeedFiles {
 			.lock()
 			.await
 			.prepare("SELECT COUNT(1) FROM seed_files WHERE signature = ?1;")?;
-		let count: i32 = stmt.query_row(rusqlite::params![signature], |row| row.get(0))?;
+		let count: i32 = stmt.query_row(params![signature], |row| row.get(0))?;
 		Ok(count > 0)
 	}
 
 	pub async fn add(&self, file_name: &str, signature: &str) -> rusqlite::Result<()> {
 		self.conn.lock().await.execute(
 			"INSERT OR IGNORE INTO seed_files (file_name, signature) VALUES (?1, ?2);",
-			rusqlite::params![file_name, signature],
+			params![file_name, signature],
 		)?;
 		Ok(())
 	}
@@ -58,7 +63,7 @@ impl SeedFiles {
 			.lock()
 			.await
 			.prepare("SELECT file_name, signature FROM seed_files;")?;
-		let sf_iter = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+		let sf_iter = stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?;
 
 		let mut sf_entries = Vec::new();
 		for sf_result in sf_iter {

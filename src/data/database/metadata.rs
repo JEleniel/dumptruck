@@ -1,16 +1,19 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::{DatabaseError, database::migrationtrait::MigrationTrait};
+use crate::data::{
+	DatabaseError,
+	database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection},
+};
 
 pub struct Metadata {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for Metadata {
-	fn create(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		conn.execute_batch(
 			"CREATE TABLE IF NOT EXISTS metadata (key INT PRIMARY KEY, db_uuid TEXT NOT NULL, hash TEXT, migration_version INT);",
 		)?;
@@ -22,11 +25,11 @@ impl MigrationTrait for Metadata {
 		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		Self::create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn downgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		conn.execute_batch("DROP TABLE IF EXISTS metadata;")?;
 		Ok(())
 	}
@@ -35,7 +38,7 @@ impl MigrationTrait for Metadata {
 impl Metadata {
 	pub const MIGRATION_VERSION: i32 = 1;
 
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -45,14 +48,14 @@ impl Metadata {
 			.lock()
 			.await
 			.prepare("SELECT db_uuid FROM metadata WHERE key = 0;")?;
-		let db_uuid = stmt.query_row(rusqlite::params![], |row| row.get(0))?;
+		let db_uuid = stmt.query_row(params![], |row| row.get(0))?;
 		Ok(db_uuid)
 	}
 
 	pub async fn set_db_uuid(&self, db_uuid: &str) -> rusqlite::Result<()> {
 		self.conn.lock().await.execute(
 			"UPDATE metadata SET db_uuid = ?1 WHERE key = 0;",
-			rusqlite::params![db_uuid],
+			params![db_uuid],
 		)?;
 		Ok(())
 	}
@@ -60,7 +63,7 @@ impl Metadata {
 	pub async fn set_migration_version(&self, version: i32) -> rusqlite::Result<()> {
 		self.conn.lock().await.execute(
 			"UPDATE metadata SET  migration_version = ?1 WHERE key = 0;",
-			rusqlite::params![version],
+			params![version],
 		)?;
 		Ok(())
 	}
@@ -71,14 +74,14 @@ impl Metadata {
 			.lock()
 			.await
 			.prepare("SELECT migration_version FROM metadata WHERE key = 0;")?;
-		let version = stmt.query_row(rusqlite::params![], |row| row.get(0))?;
+		let version = stmt.query_row(params![], |row| row.get(0))?;
 		Ok(version)
 	}
 
 	pub async fn set_hash(&self, hash: &str) -> rusqlite::Result<()> {
 		self.conn.lock().await.execute(
 			"INSERT OR REPLACE INTO metadata (key, hash, migration_version) VALUES (?1, ?2, ?3);",
-			rusqlite::params![0, hash, Self::MIGRATION_VERSION],
+			params![0, hash, Self::MIGRATION_VERSION],
 		)?;
 		Ok(())
 	}
@@ -89,7 +92,7 @@ impl Metadata {
 			.lock()
 			.await
 			.prepare("SELECT hash FROM metadata WHERE key = 0;")?;
-		let mut hash = stmt.query_row(rusqlite::params![], |row| row.get(0))?;
+		let mut hash = stmt.query_row(params![], |row| row.get(0))?;
 
 		Ok(Some(hash))
 	}
@@ -100,7 +103,7 @@ impl Metadata {
 			.lock()
 			.await
 			.prepare("SELECT key, hash FROM metadata;")?;
-		let metadata_iter = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+		let metadata_iter = stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?;
 
 		let mut metadata = Vec::new();
 		for meta_result in metadata_iter {
@@ -116,7 +119,7 @@ impl Metadata {
 				"INSERT OR REPLACE INTO metadata (key, hash, migration_version) VALUES (?1, ?2, ?3);",
 			)?;
 			for (key, hash) in entries {
-				stmt.execute(rusqlite::params![key, hash, Self::MIGRATION_VERSION])?;
+				stmt.execute(params![key, hash, Self::MIGRATION_VERSION])?;
 			}
 		}
 		tx.commit()

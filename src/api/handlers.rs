@@ -306,7 +306,7 @@ pub async fn generate_tables(args: crate::cli::GenerateTablesArgs) -> Result<(),
 	let mut builder = RainbowTableBuilder::new();
 
 	// Connect to in-memory database for generation
-	let conn = rusqlite::Connection::open_in_memory()
+	let conn = SignedConnection::open_in_memory()
 		.map_err(|e| format!("Failed to create in-memory database: {}", e))?;
 
 	// Create the rainbow table schema

@@ -20,8 +20,7 @@ use crate::{
 		},
 	},
 };
-use rusqlite::Connection;
-use std::{fs::File, path::PathBuf, sync::Arc};
+use std::{fs::File, io::BufReader, path::PathBuf, sync::Arc};
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tracing::info;
@@ -40,12 +39,12 @@ pub struct Database {
 }
 
 impl Database {
-	pub fn create(path: &PathBuf) -> Result<Self, DatabaseError> {
+	pub async fn create(path: &PathBuf) -> Result<Self, DatabaseError> {
 		let conn = SignedConnection::open(path)?;
 		let conn = Arc::new(Mutex::new(conn));
 
 		let db = Self {
-			path,
+			path: path.clone(),
 			conn: conn.clone(),
 			credentials: Credentials::new(conn.clone()),
 			dumps: Dumps::new(conn.clone()),
@@ -57,7 +56,7 @@ impl Database {
 		};
 
 		info!("Creating new database at {:?}", path);
-		migrate::create(&db.conn)?;
+		migrate::create(&db.conn.lock().await)?;
 		db.sign()?;
 
 		Ok(db)
@@ -79,7 +78,7 @@ impl Database {
 		let conn = Arc::new(Mutex::new(conn));
 
 		let db = Self {
-			path,
+			path: path.clone(),
 			conn: conn.clone(),
 			credentials: Credentials::new(conn.clone()),
 			dumps: Dumps::new(conn.clone()),
@@ -94,9 +93,9 @@ impl Database {
 			return Err(DatabaseError::DatabaseCorrupted(path.clone()));
 		}
 
-		if Metadata::get_migration_version(&conn) != Metadata::MIGRATION_VERSION {
+		if db.metadata.get_migration_version() != Metadata::MIGRATION_VERSION {
 			info!("Running database migrations");
-			migrate::upgrade(&db.conn)?;
+			migrate::upgrade(&db.conn.lock().await)?;
 		}
 
 		Ok(db)
@@ -105,7 +104,7 @@ impl Database {
 	pub async fn validate(&self) -> Result<bool, DatabaseError> {
 		let hash = self.metadata.get_db_hash().await?;
 		self.conn.lock().await.clone();
-		let current_hash = Hash::calculate_sha256(self.path)?;
+		let current_hash = Hash::calculate_sha256(&mut BufReader::new(File::open(&self.path)?))?;
 		let is_valid = hash == current_hash;
 		self.conn.lock().await.open()?;
 		Ok(is_valid)
@@ -115,7 +114,7 @@ impl Database {
 		info!("Exporting database to {:?}", arg.output_path);
 		self.conn.lock().await.close()?;
 		File::copy(&self.path, &arg.output_path)?;
-		self.conn = Arc::new(Mutex::new(Connection::open(&self.path)?));
+		self.conn = Arc::new(Mutex::new(SignedConnection::open(&self.path)?));
 		let export = Database::connect(&arg.output_path, &None)?;
 		export
 			.metadata

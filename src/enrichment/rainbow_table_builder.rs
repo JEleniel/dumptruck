@@ -5,8 +5,8 @@
 //! if regeneration is needed. All rainbow table data is now stored in SQLite instead of JSON.
 
 use crate::core::hash_utils::{md5_hex, ntlm_hex, sha1_hex, sha256_hex, sha512_hex};
+use SignedConnection;
 use md5::Context;
-use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;

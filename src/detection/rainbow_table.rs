@@ -94,7 +94,7 @@ pub fn initialize() -> Result<(), String> {
 /// Populate the SQLite rainbow table database with weak password hashes.
 /// This should be called after the database is initialized (e.g., during ingest setup).
 /// Returns true if the table was regenerated, false if hashes were already current.
-pub fn populate_database(conn: &rusqlite::Connection) -> Result<bool, String> {
+pub fn populate_database(conn: &SignedConnection) -> Result<bool, String> {
 	use crate::enrichment::rainbow_table_builder::RainbowTableBuilder;
 
 	let mut builder = RainbowTableBuilder::new();

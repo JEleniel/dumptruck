@@ -5,7 +5,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
 	fs::{self, File},
-	io::Read,
+	io::{BufReader, Read},
 	path::{Path, PathBuf},
 };
 use tracing::{debug, info, warn};
@@ -21,7 +21,7 @@ pub struct DataFile {
 impl DataFile {
 	pub fn new(path: PathBuf) -> Result<Self, DataFileError> {
 		let file_type = Self::analyze_file_type(&path)?;
-		let signature = Hash::calculate_sha256(path);
+		let signature = Hash::calculate_sha256(&mut BufReader::new(File::open(&path)?))?;
 
 		Ok(Self {
 			path,

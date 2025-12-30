@@ -1,9 +1,10 @@
 use crate::data::database::{
 	credentials::Credentials, dumps::Dumps, identities::Identities, metadata::Metadata,
 	migrationtrait::MigrationTrait, pii::Pii, rainbowtable::RainbowTable, seedfiles::SeedFiles,
+	signedconnection::SignedConnection,
 };
 
-pub fn create(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseError> {
+pub fn create(conn: &SignedConnection) -> Result<(), crate::data::DatabaseError> {
 	Credentials::create(conn)?;
 	Dumps::create(conn)?;
 	Identities::create(conn)?;
@@ -14,7 +15,7 @@ pub fn create(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseEr
 	Ok(())
 }
 
-pub fn upgrade(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseError> {
+pub fn upgrade(conn: &SignedConnection) -> Result<(), crate::data::DatabaseError> {
 	Credentials::upgrade(conn)?;
 	Dumps::upgrade(conn)?;
 	Identities::upgrade(conn)?;
@@ -25,7 +26,7 @@ pub fn upgrade(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseE
 	Ok(())
 }
 
-pub fn downgrade(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseError> {
+pub fn downgrade(conn: &SignedConnection) -> Result<(), crate::data::DatabaseError> {
 	Credentials::downgrade(conn)?;
 	Dumps::downgrade(conn)?;
 	Identities::downgrade(conn)?;

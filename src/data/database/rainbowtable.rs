@@ -1,16 +1,19 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::{DatabaseError, database::migrationtrait::MigrationTrait};
+use crate::data::{
+	DatabaseError,
+	database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection},
+};
 
 pub struct RainbowTable {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for RainbowTable {
-	fn create(conn: &rusqlite::Connection) -> Result<(), crate::data::DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), crate::data::DatabaseError> {
 		conn.execute_batch(
 			"CREATE TABLE IF NOT EXISTS rainbow_table (
 				id INT PRIMARY KEY AUTOINCREMENT,
@@ -22,18 +25,18 @@ impl MigrationTrait for RainbowTable {
 		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		Self::create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError> {
+	fn downgrade(conn: &SignedConnection) -> Result<(), DatabaseError> {
 		conn.execute_batch("DROP TABLE IF EXISTS rainbow_table;")?;
 		Ok(())
 	}
 }
 
 impl RainbowTable {
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -43,14 +46,14 @@ impl RainbowTable {
 			.lock()
 			.await
 			.prepare("SELECT hash_type FROM rainbow_table WHERE hash = ?1;")?;
-		let hash_type: String = stmt.query_row(rusqlite::params![hash], |row| row.get(0))?;
+		let hash_type: String = stmt.query_row(params![hash], |row| row.get(0))?;
 		Ok(hash_type)
 	}
 
 	pub async fn add(&self, hash_type: &str, hash: &str) -> Result<(), DatabaseError> {
 		self.conn.lock().await.execute(
-			"INSERT OR IGNORE INTO rainbow_table (type, hash) VALUES (?1, ?2);",
-			rusqlite::params![hash_type, hash],
+			"INSERT OR IGNORE INTO rainbow_table (hash_type, hash) VALUES (?1, ?2);",
+			params![hash_type, hash],
 		)?;
 		Ok(())
 	}
@@ -61,7 +64,7 @@ impl RainbowTable {
 			.lock()
 			.await
 			.prepare("SELECT hash_type, hash FROM rainbow_table;")?;
-		let rt_iter = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+		let rt_iter = stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?)))?;
 
 		let mut rt_entries = Vec::new();
 		for rt_result in rt_iter {

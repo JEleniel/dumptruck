@@ -1,7 +1,7 @@
-use crate::data::DatabaseError;
+use crate::data::{DatabaseError, database::signedconnection::SignedConnection};
 
 pub trait MigrationTrait {
-	fn create(conn: &rusqlite::Connection) -> Result<(), DatabaseError>;
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError>;
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), DatabaseError>;
+	fn create(conn: &SignedConnection) -> Result<(), DatabaseError>;
+	fn upgrade(conn: &SignedConnection) -> Result<(), DatabaseError>;
+	fn downgrade(conn: &SignedConnection) -> Result<(), DatabaseError>;
 }

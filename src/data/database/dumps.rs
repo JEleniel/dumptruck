@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::database::migrationtrait::MigrationTrait;
+use crate::data::database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection};
 
 pub struct Dumps {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for Dumps {
-	fn create(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		conn.execute_batch(
 			"
 			CREATE TABLE dumps (
@@ -24,20 +24,22 @@ impl MigrationTrait for Dumps {
 				UNIQUE (file_name, breach_date, breach_target, hash)
 			);
 			",
-		)
+		)?;
+		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		Self::create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
-		conn.execute_batch("DROP TABLE IF EXISTS dumps;")
+	fn downgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
+		conn.execute_batch("DROP TABLE IF EXISTS dumps;")?;
+		Ok(())
 	}
 }
 
 impl Dumps {
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -50,7 +52,7 @@ impl Dumps {
 		let mut stmt = self.conn.lock().await.prepare(
 			"SELECT 1 FROM dumps WHERE breach_date IS ?1 AND breach_target IS ?2 AND hash = ?3;",
 		)?;
-		let count = stmt.query_row([breach_date, breach_target, hash], |row| row.get(0))?;
+		let count = stmt.query_row(params![breach_date, breach_target, hash], |row| row.get(0))?;
 		Ok(count > 0)
 	}
 
@@ -64,12 +66,12 @@ impl Dumps {
 		let mut stmt = self.conn.lock().await.prepare(
 			"INSERT OR IGNORE INTO dumps (file_name, breach_date, breach_target, hash, last_seen) VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP);",
 		)?;
-		stmt.execute([file_name, breach_date, breach_target, hash])?;
+		stmt.execute(params![file_name, breach_date, breach_target, hash])?;
 		Ok(())
 	}
 
 	pub async fn seen(
-		conn: &rusqlite::Connection,
+		conn: &SignedConnection,
 		breach_date: Option<&str>,
 		breach_target: Option<&str>,
 		hash: &str,
@@ -77,7 +79,7 @@ impl Dumps {
 		let mut stmt = conn.prepare(
 			"UPDATE dumps SET last_seen = CURRENT_TIMESTAMP WHERE breach_date IS ?1 AND breach_target IS ?2 AND hash = ?3;",
 		)?;
-		stmt.execute([breach_date, breach_target, hash])?;
+		stmt.execute(params![breach_date, breach_target, hash])?;
 		Ok(())
 	}
 
@@ -92,7 +94,7 @@ impl Dumps {
 		let mut stmt = self.conn.lock().await.prepare(
 			"SELECT file_name, breach_date, breach_target, hash FROM dumps ORDER BY created_at DESC;",
 		)?;
-		let dump_iter = stmt.query_map([], |row| {
+		let dump_iter = stmt.query_map(params![], |row| {
 			Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
 		})?;
 
@@ -113,7 +115,7 @@ impl Dumps {
 				"INSERT OR IGNORE INTO dumps (file_name, breach_date, breach_target, hash, last_seen) VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP);",
 			)?;
 			for dump in dumps {
-				stmt.execute(&[
+				stmt.execute(params![
 					&dump.0,
 					&dump.1 as &dyn rusqlite::ToSql,
 					&dump.2 as &dyn rusqlite::ToSql,

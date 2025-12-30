@@ -84,7 +84,7 @@ fn test_date_target_flow_through_storage_layer() {
 	}
 
 	// Scope 2: Open NEW connection to verify persistence to disk
-	let conn = rusqlite::Connection::open(db_path.to_str().unwrap()).expect("open db");
+	let conn = SignedConnection::open(db_path.to_str().unwrap()).expect("open db");
 
 	let mut stmt = conn
 		.prepare("SELECT COUNT(*) FROM normalized_rows WHERE date = ?1 AND target = ?2")
@@ -180,7 +180,7 @@ fn test_multiple_ingest_sessions_with_different_targets() {
 	}
 
 	// Verify each session's data is correctly stored
-	let conn = rusqlite::Connection::open(db_path.to_str().unwrap()).expect("open db");
+	let conn = SignedConnection::open(db_path.to_str().unwrap()).expect("open db");
 
 	let mut stmt_a = conn
 		.prepare("SELECT COUNT(*) FROM normalized_rows WHERE target = 'breach_a'")
@@ -289,7 +289,7 @@ fn test_partial_date_target_settings() {
 	}
 
 	// Verify each case
-	let conn = rusqlite::Connection::open(db_path.to_str().unwrap()).expect("open db");
+	let conn = SignedConnection::open(db_path.to_str().unwrap()).expect("open db");
 
 	// Case 1: date set, target NULL
 	let mut stmt1 = conn
@@ -394,7 +394,7 @@ fn test_date_target_with_all_row_types() {
 	}
 
 	// Verify all rows have the correct date/target
-	let conn = rusqlite::Connection::open(db_path.to_str().unwrap()).expect("open db");
+	let conn = SignedConnection::open(db_path.to_str().unwrap()).expect("open db");
 
 	let mut stmt = conn
 		.prepare("SELECT COUNT(*) FROM normalized_rows")

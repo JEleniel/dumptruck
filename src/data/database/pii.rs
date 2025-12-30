@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::params;
 use tokio::sync::Mutex;
 
-use crate::data::database::migrationtrait::MigrationTrait;
+use crate::data::database::{migrationtrait::MigrationTrait, signedconnection::SignedConnection};
 
 pub struct Pii {
-	conn: Arc<Mutex<Connection>>,
+	conn: Arc<Mutex<SignedConnection>>,
 }
 
 impl MigrationTrait for Pii {
-	fn create(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn create(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		conn.execute_batch(
 			"
 			CREATE TABLE IF NOT EXISTS pii (
@@ -24,20 +24,22 @@ impl MigrationTrait for Pii {
 			CREATE INDEX IF NOT EXISTS idx_pii_type ON pii(type);
 			CREATE INDEX IF NOT EXISTS idx_pii_hash ON pii(hash);
 			",
-		)
+		)?;
+		Ok(())
 	}
 
-	fn upgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
+	fn upgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
 		Self::create(conn)
 	}
 
-	fn downgrade(conn: &rusqlite::Connection) -> Result<(), super::DatabaseError> {
-		conn.execute_batch("DROP TABLE IF EXISTS pii;")
+	fn downgrade(conn: &SignedConnection) -> Result<(), super::DatabaseError> {
+		conn.execute_batch("DROP TABLE IF EXISTS pii;")?;
+		Ok(())
 	}
 }
 
 impl Pii {
-	pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
+	pub fn new(conn: Arc<Mutex<SignedConnection>>) -> Self {
 		Self { conn }
 	}
 
@@ -51,7 +53,7 @@ impl Pii {
 			.lock()
 			.await
 			.prepare("SELECT 1 FROM pii WHERE type = ?1 AND hash = ?2 LIMIT 1;")?;
-		let mut rows = stmt.query(rusqlite::params![pii_type, pii_hash])?;
+		let mut rows = stmt.query(params![pii_type, pii_hash])?;
 		Ok(rows.next()?.is_some())
 	}
 
@@ -65,7 +67,7 @@ impl Pii {
 			INSERT OR IGNORE INTO pii (type, hash)
 			VALUES (?1, ?2);
 			",
-			rusqlite::params![pii_type, pii_hash],
+			params![pii_type, pii_hash],
 		)?;
 		Ok(())
 	}
@@ -77,7 +79,7 @@ impl Pii {
 			SET last_seen = CURRENT_TIMESTAMP
 			WHERE type = ?1 AND hash = ?2;
 			",
-			rusqlite::params![pii_type, pii_hash],
+			params![pii_type, pii_hash],
 		)?;
 		Ok(())
 	}
@@ -88,7 +90,7 @@ impl Pii {
 			.lock()
 			.await
 			.prepare("SELECT type, hash FROM pii;")?;
-		let pii_iter = stmt.query_map([], |row| {
+		let pii_iter = stmt.query_map(params![], |row| {
 			let pii_type: String = row.get(0)?;
 			let pii_hash: String = row.get(1)?;
 			Ok((pii_type, pii_hash))
@@ -109,7 +111,7 @@ impl Pii {
 		{
 			let mut stmt = tx.prepare("INSERT OR IGNORE INTO pii (type, hash) VALUES (?1, ?2);")?;
 			for (pii_type, pii_hash) in entries {
-				stmt.execute(rusqlite::params![pii_type, pii_hash])?;
+				stmt.execute(params![pii_type, pii_hash])?;
 			}
 		}
 		tx.commit()?;
