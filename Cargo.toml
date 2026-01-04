@@ -8,10 +8,6 @@ repository = "https://github.com/JEleniel/dumptruck"
 license = "MIT-or-APACHE-2.0"
 publish = false
 
-[[bin]]
-name = "stress-test"
-path = "src/stress_test.rs"
-
 [dependencies]
 axum = { version = "0.8", features = ["http2", "macros", "multipart"] }
 axum-server = { version = "0.8", features = ["tls-openssl", "tls-rustls"] }
@@ -29,9 +25,11 @@ md4 = { version = "0.10" }
 md5 = { version = "0.8" }
 once_cell = { version = "1.20" }
 openssl = { version = "0.10", features = ["vendored"] }
+r2d2 = "0.8.10"
+r2d2_sqlite = { version = "0.32.0", features = ["bundled"] }
 rand = { version = "0.8" }
 rayon = { version = "1.8" }
-regex = "1.12.2"
+regex = { version = "1.12.2" }
 reqwest = { version = "0.12", features = [
   "brotli",
   "deflate",
@@ -41,12 +39,7 @@ reqwest = { version = "0.12", features = [
   "stream",
   "zstd"
 ] }
-rusqlite = { version = "0.33", features = [
-  "bundled",
-  "chrono",
-  "serde_json",
-  "uuid"
-] }
+rusqlite = { version = "0.38.0", features = ["bundled"] }
 rustls = { version = "0.23", features = ["brotli", "ring", "std"] }
 rustls-pemfile = { version = "2.2" }
 serde = { version = "1.0", features = ["derive"] }
@@ -68,11 +61,6 @@ tracing-subscriber = { version = "0.3", features = [
   "serde_json"
 ] }
 unicode-normalization = { version = "0.1" }
+url = { version = "2.5.7", features = ["serde"] }
 urlencoding = { version = "2.1" }
 uuid = { version = "1.10", features = ["serde", "v4", "v7"] }
-
-[dev-dependencies]
-assert_cmd = { version = "2", features = ["color-auto"] }
-predicates = { version = "2" }
-proptest = { version = "1.0" }
-tempfile = { version = "3" }

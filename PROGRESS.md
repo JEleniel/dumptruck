@@ -659,3 +659,22 @@ cargo clippy --all-targets -- -D warnings
 
 **Last Updated**: (Session 5 Complete)
 **Status**: 100% COMPLETE AND PRODUCTION READY ✅
+
+---
+
+## Data Module Scan (Dec 30, 2025)
+
+- Scanned `src/data` recursively and documented modules in `docs/data/MODULES.md`.
+- Files discovered: `exportargs.rs`, `importargs.rs`, `database.rs`, and `src/data/database/*` modules (`credentials.rs`, `dumps.rs`, `identities.rs`, `metadata.rs`, `migrate.rs`, `migrationtrait.rs`, `pii.rs`, `rainbowtable.rs`, `seedfiles.rs`, `signedconnection.rs`).
+- Notable findings:
+    + Pattern: each DB submodule implements `MigrationTrait` and provides `new(conn)` + async CRUD-style methods (`is_known`, `add`, `seen`, `get_all`, `write_all`) using `Arc<Mutex<SignedConnection>>` and `rusqlite::params!`.
+    + Potential API mismatch: `ExportArgs` defines field `output` while `Database::export` references `arg.output_path` (and similarly for `ImportArgs`/`input` vs `input_path`) — recommend aligning field names or using accessor methods.
+    + Schema pattern: `INSERT OR IGNORE` and `CREATE TABLE IF NOT EXISTS` used consistently; `write_all` uses transactions.
+    + SignedConnection finalization: DB signature (SHA-256) is updated on `Drop` via `SignedConnection::finalize_signature()`.
+- Action: Created `docs/data/MODULES.md` describing module responsibilities, public API, and patterns.
+- Status: Documentation updated; memory updated with condensed project knowledge.
+
+---
+
+**Last Updated**: (Session 5 Complete)
+**Status**: 100% COMPLETE AND PRODUCTION READY ✅

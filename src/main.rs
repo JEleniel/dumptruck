@@ -4,7 +4,7 @@ use std::os::linux::process;
 async fn main() {
 	if let Err(e) = dumptruck::run().await {
 		error!(
-			"An application error has occurred and the application will exit: {}",
+			"An unrecoverable error has occurred and the application will exit: {}",
 			e
 		);
 		process::exit(1);

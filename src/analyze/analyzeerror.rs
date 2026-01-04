@@ -4,4 +4,6 @@ use thiserror::Error;
 pub enum AnalyzeError {
 	#[error("Invalid breach date format: {0}")]
 	InvalidBreachDate(String),
+	#[error("I/O error: {0}")]
+	IoError(#[from] std::io::Error),
 }

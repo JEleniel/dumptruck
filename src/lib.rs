@@ -1,25 +1,20 @@
-pub mod analyze;
-pub mod api;
-pub mod cli;
-mod common;
+mod analyze;
+mod api;
+mod cli;
 mod configuration;
-pub mod core;
-pub mod data;
-mod datafile;
-pub mod deploy;
-pub mod detection;
-pub mod enrichment;
-pub mod network;
-pub mod normalization;
-mod regexes;
-pub mod seed;
+mod core;
+pub mod database;
+mod enrichment;
+mod network;
 mod server;
 mod status;
+mod util;
 
-use crate::{configuration::Configuration, seed::SeedManager};
+use crate::configuration::Configuration;
 use clap::Parser;
 use cli::{Cli, Commands};
 use thiserror::Error;
+pub use util::*;
 
 pub async fn run() -> Result<(), RunError> {
 	// Parse command-line arguments
@@ -31,24 +26,26 @@ pub async fn run() -> Result<(), RunError> {
 		}
 	};
 
-	let configuration = Configuration::load(&cli.config)?;
+	let mut configuration = Configuration::load(&cli.config)?;
 
-	let configuration = configuration.apply_cli_overrides(&cli);
+	configuration = configuration.apply_cli_overrides(&cli)?;
 
 	match cli.command {
-		Commands::Seed(args) => {
-			SeedManager::run(args).await?;
+		Commands::Analyze(args) => {
+			analyze::analyze(args).await?;
 		}
-		Commands::Analyze(args) => {}
 		Commands::Import(args) => {}
 		Commands::Export(args) => {}
 		Commands::Serve(args) => {}
 		Commands::Status(args) => {}
 	};
+	Ok(())
 }
 
 #[derive(Debug, Error)]
 pub enum RunError {
 	#[error("Configuration error: {0}")]
 	ConfigurationError(#[from] configuration::ConfigurationError),
+	#[error("Analyze error: {0}")]
+	AnalyzeError(#[from] analyze::AnalyzeError),
 }
