@@ -4,8 +4,11 @@ use reqwest::Url;
 use std::path::PathBuf;
 
 use crate::{
+	analyze::AnalyzeArgs,
 	configuration::APIKey,
 	database::{exportargs::ExportArgs, importargs::ImportArgs},
+	server::ServerArgs,
+	status::StatusArgs,
 };
 
 /// Shared command line interface structure, including all available commands
@@ -74,14 +77,14 @@ pub struct Cli {
 #[derive(Parser, Debug)]
 pub enum Commands {
 	/// Ingest and analyze data files
-	Analyze(super::analyze::AnalyzeArgs),
+	Analyze(AnalyzeArgs),
 	/// Show system information for a running server instance
-	Status(super::status::StatusArgs),
+	Status(StatusArgs),
 	/// Export the database to a "seed" database file
 	Export(ExportArgs),
 	/// Merge a database file into the main database
 	/// This is primarily used to import "seed" database files
 	Import(ImportArgs),
 	/// Start in HTTP/2 server mode with TLS 1.3+ and OAuth authentication
-	Serve(super::server::ServerArgs),
+	Serve(ServerArgs),
 }

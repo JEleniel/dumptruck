@@ -1,8 +1,7 @@
-use std::io;
+use std::io::{self, BufReader};
 
-use md4::Md4;
+use md4::{Digest, Md4};
 use md5::Context;
-use sha2::Sha256;
 use thiserror::Error;
 
 pub struct Hash {}
@@ -29,7 +28,7 @@ impl Hash {
 
 	/// Compute SHA256 of a reader
 	pub fn calculate_sha256(reader: &mut impl io::Read) -> Result<String, HashError> {
-		let mut hasher = Sha256::new();
+		let mut hasher = sha2::Sha256::new();
 		let mut buffer = [0; 4096]; // buffer size: 4KB	
 
 		loop {
@@ -59,6 +58,30 @@ impl Hash {
 		}
 
 		Ok(format!("{:x}", hasher.finalize()))
+	}
+
+	/// Hash a numeric value stripped of all non-digit characters
+	pub fn hash_numeric(value: &str) -> Result<String, HashError> {
+		let normalized = Self::digits_only(value);
+		Ok(Self::calculate_sha256(&mut BufReader::new(
+			normalized.as_bytes(),
+		))?)
+	}
+
+	/// Hash an alphanumeric value stripped of whitespace and punctuation,
+	/// excluding '@' to preserve email-like strings.
+	pub fn hash_alphanumeric(value: &str) -> Result<String, HashError> {
+		let normalized: String = value
+			.chars()
+			.filter(|c| c.is_alphanumeric() || *c == '@')
+			.collect();
+		Ok(Self::calculate_sha256(&mut BufReader::new(
+			normalized.as_bytes(),
+		))?)
+	}
+
+	fn digits_only(value: &str) -> String {
+		value.chars().filter(|c| c.is_ascii_digit()).collect()
 	}
 }
 

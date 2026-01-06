@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
 	detection::{DetectionError, npi_detection::NPIType},
 };
@@ -16,7 +16,7 @@ impl AccountNumber {
 		let mut confidence: f32 = 0.0;
 
 		// Check if the column type is relevant
-		if column_type == DataFieldType::NPI(NPIType::OtherRecordNumber("Account Number")) {
+		if column_type == DataFieldType::NPI(NPIType::OtherRecordNumber(NPIType::ACCOUNT_NUMBER)) {
 			confidence += 0.5;
 		}
 

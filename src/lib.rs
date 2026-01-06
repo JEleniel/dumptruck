@@ -2,7 +2,6 @@ mod analyze;
 mod api;
 mod cli;
 mod configuration;
-mod core;
 pub mod database;
 mod enrichment;
 mod network;
@@ -28,11 +27,11 @@ pub async fn run() -> Result<(), RunError> {
 
 	let mut configuration = Configuration::load(&cli.config)?;
 
-	configuration = configuration.apply_cli_overrides(&cli)?;
+	configuration.apply_cli_overrides(&cli)?;
 
 	match cli.command {
 		Commands::Analyze(args) => {
-			analyze::analyze(args).await?;
+			analyze::analyze(configuration, args).await?;
 		}
 		Commands::Import(args) => {}
 		Commands::Export(args) => {}

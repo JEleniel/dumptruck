@@ -9,7 +9,6 @@ mod creditcardnumber;
 mod cryptoaddress;
 mod dateofbirth;
 mod emailaddress;
-mod fullname;
 mod genderdata;
 mod gpslocation;
 mod imeinumber;
@@ -17,22 +16,22 @@ mod isocountrycodes;
 mod mailingaddress;
 mod nationalidentificationnumber;
 mod normalizer;
+mod npitype;
 mod otheridentificationnumber;
 mod otheridentity;
 mod otherpersonaldata;
 mod otherrecordnumber;
 mod personalidentificationnumber;
+mod personalname;
 mod phonenumber;
-mod types;
 
-use serde::{Deserialize, Serialize};
-pub use types::*;
+pub use npitype::*;
 
 use std::collections::HashMap;
 
 use crate::analyze::datafile::DataFieldType;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct NPIResult {
 	pub npi_detected: bool,
 	pub npi_type: Option<NPIType>,
@@ -83,7 +82,7 @@ pub fn detect_npi(value: &str, column_data_type: DataFieldType) -> NPIResult {
 	);
 	detected.insert(
 		NPIType::PersonalName,
-		fullname::FullName::detect(trimmed, column_data_type).unwrap_or(0.0),
+		personalname::PersonalName::detect(trimmed, column_data_type).unwrap_or(0.0),
 	);
 	detected.insert(
 		NPIType::GenderData,

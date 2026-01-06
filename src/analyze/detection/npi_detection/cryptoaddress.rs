@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
 	detection::{DetectionError, npi_detection::NPIType},
 };
@@ -23,22 +23,22 @@ impl CryptoAddress {
 
 		// Bitcoin addresses (P2PKH: 1..., P2SH: 3..., Bech32: bc1...)
 		if Self::validate_bitcoin(value) {
-			return Ok(confidence + 0.8);
+			return Ok(confidence + 0.5);
 		}
 
 		// Ethereum addresses (0x...)
 		if Self::validate_ethereum(value) {
-			return Ok(confidence + 0.8);
+			return Ok(confidence + 0.5);
 		}
 
 		// Bech32 format (generic)
 		if Self::validate_bech32(value) {
-			return Ok(confidence + 0.7);
+			return Ok(confidence + 0.4);
 		}
 
 		// Base58 format (generic)
 		if Self::validate_base58(value) {
-			return Ok(confidence + 0.5);
+			return Ok(confidence + 0.3);
 		}
 
 		Ok(confidence)

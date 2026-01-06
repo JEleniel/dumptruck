@@ -1,4 +1,7 @@
-use crate::{datafile::DataFieldType, detection::DetectionError};
+use crate::analyze::{
+	datafile::DataFieldType,
+	detection::{DetectionError, npi_detection::NPIType},
+};
 
 pub struct DateOfBirth {}
 
@@ -7,8 +10,8 @@ impl DateOfBirth {
 		// Date of Birth, identified primarily by headers/labels
 		let mut confidence: f32 = 0.0;
 
-		if column_type == DataFieldType::NPI {
-			confidence += 0.6;
+		if column_type == DataFieldType::NPI(NPIType::DateOfBirth) {
+			confidence += 0.5;
 		}
 
 		// Check for date-like patterns (YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY, etc.)

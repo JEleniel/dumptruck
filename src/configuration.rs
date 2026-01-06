@@ -97,7 +97,7 @@ impl Configuration {
 		Ok(config.try_deserialize()?)
 	}
 
-	pub fn apply_cli_overrides(&mut self, cli: &Cli) -> Result<&mut Self, ConfigurationError> {
+	pub fn apply_cli_overrides(&mut self, cli: &Cli) -> Result<(), ConfigurationError> {
 		if let Some(api_keys) = &cli.api_keys {
 			if self.api_keys.is_none() {
 				self.api_keys = Some(Vec::new());
@@ -142,7 +142,7 @@ impl Configuration {
 			}
 		}
 
-		Ok(self)
+		Ok(())
 	}
 }
 

@@ -1,8 +1,11 @@
 use regex::Regex;
 
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
-	detection::{DetectionError, npi_detection::isocountrycodes::ISO_COUNTRY_CODES},
+	detection::{
+		DetectionError,
+		npi_detection::{NPIType, isocountrycodes::ISO_COUNTRY_CODES},
+	},
 };
 
 pub struct BankSWIFTCode {}
@@ -16,8 +19,8 @@ impl BankSWIFTCode {
 
 		let mut confidence: f32 = 0.0;
 
-		if column_type == DataFieldType::NPI {
-			confidence += 0.1;
+		if column_type == DataFieldType::NPI(NPIType::OtherRecordNumber(NPIType::BANK_SWIFT_CODE)) {
+			confidence += 0.5;
 		}
 
 		let normalized = value.to_uppercase();
@@ -27,7 +30,7 @@ impl BankSWIFTCode {
 			// Validate country code
 			let country_code = &normalized[4..6];
 			if ISO_COUNTRY_CODES.contains(&country_code) {
-				confidence += 0.7;
+				confidence += 0.3;
 			}
 		}
 

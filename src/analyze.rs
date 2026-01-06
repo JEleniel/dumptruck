@@ -9,6 +9,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{
 	analyze::datafile::{DataFieldType, DataFile, DataFileError, DataFileType},
+	configuration::Configuration,
 	database::Database,
 	util::get_files_from_path,
 };
@@ -17,7 +18,7 @@ pub use analyzeerror::*;
 use tokio::fs;
 use tracing::{debug, warn};
 
-pub async fn analyze(args: AnalyzeArgs) -> Result<(), AnalyzeError> {
+pub async fn analyze(configuration: Configuration, args: AnalyzeArgs) -> Result<(), AnalyzeError> {
 	let mut pending_files = get_files_from_path(args.input, args.recursive).await?;
 
 	Ok(())

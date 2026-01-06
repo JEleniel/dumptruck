@@ -64,29 +64,59 @@ pub enum NPIType {
 impl std::fmt::Display for NPIType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::AccountNumber => write!(f, "Account Number"),
-			Self::BankIBAN => write!(f, "Bank IBAN"),
-			Self::BankRoutingNumber => write!(f, "Bank Routing Number"),
-			Self::BankSWIFTCode => write!(f, "Bank SWIFT/BIC Code"),
-			Self::BiometricData => write!(f, "Biometric Data"),
-			Self::CreditCardNumber => write!(f, "Credit Card Number"),
-			Self::CryptoAddress => write!(f, "Crypto Address"),
-			Self::DateOfBirth => write!(f, "Date of Birth"),
-			Self::EmailAddress => write!(f, "Email Address"),
-			Self::PersonalName => write!(f, "Full Name"),
-			Self::GenderData => write!(f, "Gender Data"),
-			Self::GPSLocation => write!(f, "GPS Location"),
-			Self::IMEI => write!(f, "IMEI Number"),
-			Self::MailingAddress => write!(f, "Mailing Address"),
-			Self::NationalIdentificationNumber => write!(f, "National Identification Number"),
-			Self::OtherIdentificationNumber(desc) => {
-				write!(f, "Other Identification Number ({})", desc)
+			Self::AccountNumber => write!(f, "{}", Self::ACCOUNT_NUMBER),
+			Self::BankIBAN => write!(f, "{}", Self::BANK_IBAN),
+			Self::BankRoutingNumber => write!(f, "{}", Self::BANK_ROUTING_NUMBER),
+			Self::BankSWIFTCode => write!(f, "{}", Self::BANK_SWIFT_CODE),
+			Self::BiometricData => write!(f, "{}", Self::BIOMETRIC_DATA),
+			Self::CreditCardNumber => write!(f, "{}", Self::CREDIT_CARD_NUMBER),
+			Self::CryptoAddress => write!(f, "{}", Self::CRYPTO_ADDRESS),
+			Self::DateOfBirth => write!(f, "{}", Self::DATE_OF_BIRTH),
+			Self::EmailAddress => write!(f, "{}", Self::EMAIL_ADDRESS),
+			Self::PersonalName => write!(f, "{}", Self::PERSONAL_NAME),
+			Self::GenderData => write!(f, "{}", Self::GENDER_DATA),
+			Self::GPSLocation => write!(f, "{}", Self::GPS_LOCATION),
+			Self::IMEI => write!(f, "{}", Self::IMEI),
+			Self::MailingAddress => write!(f, "{}", Self::MAILING_ADDRESS),
+			Self::NationalIdentificationNumber => {
+				write!(f, "{}", Self::NATIONAL_IDENTIFICATION_NUMBER)
 			}
-			Self::OtherIdentity(desc) => write!(f, "Other Identity ({})", desc),
-			Self::OtherPersonalData(desc) => write!(f, "Other Personal Data ({})", desc),
-			Self::OtherRecordNumber(desc) => write!(f, "Other Record Number ({})", desc),
-			Self::PersonalIdentificationNumber => write!(f, "Personal Identification Number"),
-			Self::PhoneNumber => write!(f, "Phone Number"),
+			Self::OtherIdentificationNumber(desc) => {
+				write!(f, "{} ({})", Self::OTHER_IDENTIFICATION_NUMBER, desc)
+			}
+			Self::OtherIdentity(desc) => write!(f, "{} ({})", Self::OTHER_IDENTITY, desc),
+			Self::OtherPersonalData(desc) => write!(f, "{} ({})", Self::OTHER_PERSONAL_DATA, desc),
+			Self::OtherRecordNumber(desc) => write!(f, "{} ({})", Self::OTHER_RECORD_NUMBER, desc),
+			Self::PersonalIdentificationNumber => {
+				write!(f, "{}", Self::PERSONAL_IDENTIFICATION_NUMBER)
+			}
+			Self::PhoneNumber => {
+				write!(f, "{}", Self::PHONE_NUMBER)
+			}
 		}
 	}
+}
+
+impl NPIType {
+	pub const ACCOUNT_NUMBER: &'static str = "Account Number";
+	pub const BANK_IBAN: &'static str = "Bank IBAN";
+	pub const BANK_ROUTING_NUMBER: &'static str = "Bank Routing Number";
+	pub const BANK_SWIFT_CODE: &'static str = "Bank SWIFT/BIC Code";
+	pub const BIOMETRIC_DATA: &'static str = "Biometric Data";
+	pub const CREDIT_CARD_NUMBER: &'static str = "Credit Card Number";
+	pub const CRYPTO_ADDRESS: &'static str = "Crypto Address";
+	pub const DATE_OF_BIRTH: &'static str = "Date of Birth";
+	pub const EMAIL_ADDRESS: &'static str = "Email Address";
+	pub const PERSONAL_NAME: &'static str = "Full Name";
+	pub const GENDER_DATA: &'static str = "Gender Data";
+	pub const GPS_LOCATION: &'static str = "GPS Location";
+	pub const IMEI: &'static str = "IMEI Number";
+	pub const MAILING_ADDRESS: &'static str = "Mailing Address";
+	pub const NATIONAL_IDENTIFICATION_NUMBER: &'static str = "National Identification Number";
+	pub const OTHER_IDENTIFICATION_NUMBER: &'static str = "Other Identification Number";
+	pub const OTHER_IDENTITY: &'static str = "Other Identity";
+	pub const OTHER_PERSONAL_DATA: &'static str = "Other Personal Data";
+	pub const OTHER_RECORD_NUMBER: &'static str = "Other Record Number";
+	pub const PERSONAL_IDENTIFICATION_NUMBER: &'static str = "Personal Identification Number";
+	pub const PHONE_NUMBER: &'static str = "Phone Number";
 }

@@ -1,4 +1,4 @@
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
 	detection::{DetectionError, npi_detection::NPIType},
 };
@@ -19,11 +19,11 @@ impl GenderData {
 
 		// Single-character gender codes
 		if normalized == "m" || normalized == "f" || normalized == "x" || normalized == "o" {
-			confidence += 0.2;
+			confidence += 0.3;
 		}
 
 		// Common gender strings
-		let gender_keywords = [
+		const GENDER_KEYWORDS: [&str; 10] = [
 			"male",
 			"female",
 			"man",
@@ -31,11 +31,12 @@ impl GenderData {
 			"boy",
 			"girl",
 			"other",
+			"non binary",
 			"non-binary",
 			"nonbinary",
 		];
 
-		for keyword in &gender_keywords {
+		for keyword in &GENDER_KEYWORDS {
 			if normalized.contains(keyword) {
 				confidence += 0.3;
 			}

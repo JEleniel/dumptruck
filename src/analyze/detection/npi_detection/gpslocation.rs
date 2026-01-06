@@ -1,6 +1,9 @@
 use regex::Regex;
 
-use crate::{datafile::DataFieldType, detection::DetectionError};
+use crate::analyze::{
+	datafile::DataFieldType,
+	detection::{DetectionError, npi_detection::NPIType},
+};
 
 pub struct GPSLocation {}
 
@@ -9,23 +12,23 @@ impl GPSLocation {
 		// GPS coordinates: decimal degrees or DMS format
 		let mut confidence: f32 = 0.0;
 
-		if column_type == DataFieldType::NPI {
-			confidence += 0.2;
+		if column_type == DataFieldType::NPI(NPIType::GPSLocation) {
+			confidence += 0.5;
 		}
 
 		// Comma-separated lat,lon format
 		if Self::is_lat_lon_pair(value) {
-			return Ok(confidence + 0.8);
+			return Ok(confidence + 0.5);
 		}
 
 		// Decimal degrees format: -90 to 90 for latitude, -180 to 180 for longitude
 		if Self::is_decimal_degrees(value) {
-			return Ok(confidence + 0.7);
+			return Ok(confidence + 0.4);
 		}
 
 		// DMS (Degrees, Minutes, Seconds) format: 40:26:46N, 120:15:30W
 		if Self::is_dms_format(value) {
-			return Ok(confidence + 0.7);
+			return Ok(confidence + 0.4);
 		}
 
 		Ok(confidence)

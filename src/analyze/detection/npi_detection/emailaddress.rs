@@ -1,6 +1,9 @@
 use regex::Regex;
 
-use crate::{datafile::DataFieldType, detection::DetectionError};
+use crate::analyze::{
+	datafile::DataFieldType,
+	detection::{DetectionError, npi_detection::NPIType},
+};
 
 pub struct EmailAddress {}
 
@@ -13,12 +16,12 @@ impl EmailAddress {
 
 		let mut confidence: f32 = 0.0;
 
-		if column_type == DataFieldType::NPI {
-			confidence += 0.4;
+		if column_type == DataFieldType::NPI(NPIType::EmailAddress) {
+			confidence += 0.5;
 		}
 
 		if email_regex.is_match(value) {
-			confidence += 0.6;
+			confidence += 0.3;
 		}
 
 		Ok(confidence)

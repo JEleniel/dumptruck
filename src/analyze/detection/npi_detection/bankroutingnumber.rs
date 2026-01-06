@@ -1,9 +1,10 @@
 use regex::Regex;
 
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
 	detection::{DetectionError, npi_detection::NPIType},
 };
+use crate::util::Checksum;
 
 pub struct BankRoutingNumber {}
 
@@ -15,7 +16,9 @@ impl BankRoutingNumber {
 		let mut confidence: f32 = 0.0;
 
 		// Check if the column type is relevant
-		if column_type == DataFieldType::NPI(NPIType::OtherRecordNumber("Bank Routing Number")) {
+		if column_type
+			== DataFieldType::NPI(NPIType::OtherRecordNumber(NPIType::BANK_ROUTING_NUMBER))
+		{
 			confidence += 0.5;
 		}
 
@@ -23,23 +26,10 @@ impl BankRoutingNumber {
 		if regex.is_match(&haystack) {
 			confidence += 0.2;
 
-			// Verify MOD-10 checksum
-			let digits: Vec<u32> = haystack
-				.chars()
-				.map(|c| c.to_digit(10).unwrap_or(0))
-				.collect();
+			let checksum = Checksum::validate_mod_10(&haystack)?;
 
-			let weighted_sum: u32 = digits
-				.iter()
-				.enumerate()
-				.map(|(i, d)| {
-					let weights = [3, 7, 1];
-					d * weights[i % 3]
-				})
-				.sum();
-
-			if weighted_sum % 10 == 0 {
-				confidence += 0.5;
+			if checksum {
+				confidence += 0.3;
 			}
 		}
 

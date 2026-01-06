@@ -1,9 +1,11 @@
 use regex::Regex;
 
-use crate::{
+use crate::analyze::{
 	datafile::DataFieldType,
-	detection::DetectionError,
-	detection::npi_detection::{isocountrycodes::ISO_COUNTRY_CODES, types::NPIType},
+	detection::{
+		DetectionError,
+		npi_detection::{NPIType, isocountrycodes::ISO_COUNTRY_CODES},
+	},
 };
 
 pub struct MailingAddress {}
@@ -19,7 +21,7 @@ impl MailingAddress {
 
 		// Check for common address patterns
 		let lower_value = value.to_lowercase();
-		let address_keywords = [
+		const ADDRESS_KEYWORDS: [&str; 20] = [
 			"street",
 			"st.",
 			"avenue",
@@ -42,15 +44,15 @@ impl MailingAddress {
 			"address",
 		];
 
-		for keyword in &address_keywords {
+		for keyword in &ADDRESS_KEYWORDS {
 			if lower_value.contains(keyword) {
-				confidence += 0.05;
+				confidence += 0.1;
 			}
 		}
 
 		// Check for common address patterns: "123 Main St" or similar
 		if value.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-			confidence += 0.2;
+			confidence += 0.1;
 		}
 
 		// Addresses typically have some length
@@ -60,12 +62,12 @@ impl MailingAddress {
 
 		// Check for country codes
 		if Self::has_country_code(value) {
-			confidence += 0.15;
+			confidence += 0.2;
 		}
 
 		// Check for postal code patterns
 		if Self::has_postal_code(value) {
-			confidence += 0.15;
+			confidence += 0.2;
 		}
 
 		Ok(confidence)

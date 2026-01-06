@@ -8,7 +8,14 @@
 
 use thiserror::Error;
 
+use crate::ChecksumError;
+
 pub mod npi_detection;
 
 #[derive(Debug, Error)]
-pub enum DetectionError {}
+pub enum DetectionError {
+	#[error("Regex error: {0}")]
+	RegexError(#[from] regex::Error),
+	#[error("Checksum validation error: {0}")]
+	ChecksumError(#[from] ChecksumError),
+}

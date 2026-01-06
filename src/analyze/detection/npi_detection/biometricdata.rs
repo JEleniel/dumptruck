@@ -1,4 +1,7 @@
-use crate::{datafile::DataFieldType, detection::DetectionError};
+use crate::analyze::{
+	datafile::DataFieldType,
+	detection::{DetectionError, npi_detection::NPIType},
+};
 
 pub struct BiometricData {}
 
@@ -8,13 +11,13 @@ impl BiometricData {
 		// Identified primarily by headers/labels
 		let mut confidence: f32 = 0.0;
 
-		if column_type == DataFieldType::NPI {
+		if column_type == DataFieldType::NPI(NPIType::BiometricData) {
 			confidence += 0.5;
 		}
 
-		// Check for common biometric-related patterns in the column name or data
+		// Check for common biometric-related patterns in the data
 		let lower_value = value.to_lowercase();
-		let biometric_keywords = [
+		const BIOMETRIC_KEYWORDS: [&str; 9] = [
 			"fingerprint",
 			"retina",
 			"voiceprint",
@@ -26,9 +29,9 @@ impl BiometricData {
 			"gait",
 		];
 
-		for keyword in &biometric_keywords {
+		for keyword in &BIOMETRIC_KEYWORDS {
 			if lower_value.contains(keyword) {
-				confidence += 0.1;
+				confidence += 0.3;
 			}
 		}
 

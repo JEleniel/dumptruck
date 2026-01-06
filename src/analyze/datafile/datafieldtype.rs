@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use thiserror::Error;
 
 use crate::analyze::{datafile::DATA_FIELD_MAPPINGS, detection::npi_detection::NPIType};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DataFieldType {
 	UserIdentity,
 	UserRecordNumber,
@@ -16,15 +15,14 @@ pub enum DataFieldType {
 
 impl Display for DataFieldType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let text = match self {
-			Self::UserIdentity => "User Identity",
-			Self::UserRecordNumber => "User Record Number",
-			Self::Credential => "Credential",
-			Self::SecureCredential => "Secure Credential",
-			Self::NPI(npi_type) => format!("Non-Public Information (NPI): {}", npi_type).as_str(),
-			Self::Other => "Other/Unknown",
-		};
-		write!(f, "{}", text)
+		match self {
+			Self::UserIdentity => write!(f, "User Identity"),
+			Self::UserRecordNumber => write!(f, "User Record Number"),
+			Self::Credential => write!(f, "Credential"),
+			Self::SecureCredential => write!(f, "Secure Credential"),
+			Self::NPI(npi_type) => write!(f, "Non-Public Information (NPI): {}", npi_type),
+			Self::Other => write!(f, "Other/Unknown"),
+		}
 	}
 }
 
@@ -32,8 +30,8 @@ impl DataFieldType {
 	pub fn from_field_name(field_name: &str) -> Result<Self, DataFieldTypeError> {
 		let field_name_lower = field_name.to_lowercase();
 
-		if DATA_FIELD_MAPPINGS.contains_key(&field_name_lower) {
-			Ok(DATA_FIELD_MAPPINGS.get(&field_name_lower)?.clone())
+		if let Some(data_field_type) = DATA_FIELD_MAPPINGS.get(field_name_lower.as_str()) {
+			Ok(data_field_type.clone())
 		} else {
 			Ok(DataFieldType::Other)
 		}
@@ -41,4 +39,7 @@ impl DataFieldType {
 }
 
 #[derive(Debug, Error)]
-pub enum DataFieldTypeError {}
+pub enum DataFieldTypeError {
+	#[error("Data field type not found for the given field name.")]
+	FieldTypeNotFound,
+}

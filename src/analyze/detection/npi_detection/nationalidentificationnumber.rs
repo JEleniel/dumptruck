@@ -1,6 +1,7 @@
 //! National ID detection for 15+ countries.
-use crate::{
-	datafile::DataFieldType, detection::DetectionError, detection::npi_detection::NPIType,
+use crate::analyze::{
+	datafile::DataFieldType,
+	detection::{DetectionError, npi_detection::NPIType},
 };
 
 /// Information about a detected national ID.
@@ -21,7 +22,7 @@ impl NationalIdentificationNumber {
 		}
 
 		if is_national_id(value) {
-			confidence += 0.5;
+			confidence += 0.3;
 		}
 
 		Ok(confidence)
