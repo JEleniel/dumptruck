@@ -1,0 +1,10 @@
+{
+	"id": "link:actor:operator:driver:dumptruck-root:stakeholder",
+	"metadata": {
+		"context": "operations"
+	},
+	"rationale": "Operators enable secure server deployments and operational safety for the Dumptruck mission.",
+	"source": "actor:operator",
+	"strength": "normal",
+	"target": "driver:dumptruck-root"
+}

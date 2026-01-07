@@ -1,0 +1,28 @@
+{
+	"audit_history": [
+		{
+			"by": "agent:architect",
+			"event": "created",
+			"event_time": "2026-01-07T00:00:00Z",
+			"note": "Corrected pre-AURORA docs that referenced non-SQLite storage and JSON file persistence."
+		}
+	],
+	"attributes": {
+		"database_engine": "sqlite",
+		"database_file": "dumptruck.db",
+		"persistence": "single-file"
+	},
+	"constraints": ["constraint:no-json-persistence"],
+	"description": "All operational data for Dumptruck (history, dedup indicators, analysis artifacts, metadata) is persisted in a single SQLite database file. The system does not rely on JSON files for persistent state.",
+	"id": "requirement:sqlite-primary-storage",
+	"links": [],
+	"name": "SQLite is the primary persistent store",
+	"provenance": {
+		"owner": "actor:maintainers",
+		"source": "src/database/**; src/cli.rs"
+	},
+	"relations": [],
+	"status": "approved",
+	"type": "requirement",
+	"version": "1.0.0"
+}

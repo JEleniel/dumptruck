@@ -1,0 +1,10 @@
+{
+	"id": "link:requirement:stage-based-processing-pipeline:driver:dumptruck-root:derives",
+	"metadata": {
+		"context": "architecture"
+	},
+	"rationale": "A stage-based pipeline is required to satisfy the mission goals (safe input handling, privacy-preserving enrichment, auditable outputs).",
+	"source": "requirement:stage-based-processing-pipeline",
+	"strength": "strong",
+	"target": "driver:dumptruck-root"
+}

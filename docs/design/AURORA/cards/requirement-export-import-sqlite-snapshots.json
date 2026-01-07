@@ -1,0 +1,28 @@
+{
+	"audit_history": [
+		{
+			"by": "agent:architect",
+			"event": "created",
+			"event_time": "2026-01-07T00:00:00Z",
+			"note": "Replaced a legacy dataset-sharing workflow with explicit export/import database snapshots."
+		}
+	],
+	"attributes": {
+		"export_format": "sqlite",
+		"import_format": "sqlite",
+		"workflow": ["export", "transfer", "import"]
+	},
+	"constraints": [],
+	"description": "Dumptruck must support exporting the current SQLite database to a standalone SQLite file, and importing/merging another exported SQLite database into the primary database. This workflow is the supported mechanism for sharing curated datasets between instances.",
+	"id": "requirement:export-import-sqlite-snapshots",
+	"links": [],
+	"name": "Export/import via SQLite database snapshots",
+	"provenance": {
+		"owner": "actor:maintainers",
+		"source": "src/cli.rs; src/database.rs"
+	},
+	"relations": [],
+	"status": "approved",
+	"type": "requirement",
+	"version": "1.0.0"
+}

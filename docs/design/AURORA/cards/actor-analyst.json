@@ -1,0 +1,23 @@
+{
+	"audit_history": [
+		{
+			"by": "agent:architect",
+			"event": "created",
+			"event_time": "2026-01-07T00:00:00Z",
+			"note": "Captured primary end-user persona for CLI analysis workflows."
+		}
+	],
+	"attributes": {
+		"primary_interactions": ["cli"],
+		"typical_tasks": ["analyze", "export", "import"]
+	},
+	"constraints": [],
+	"description": "An analyst runs Dumptruck locally to analyze dumps and generate reports, optionally importing/exporting SQLite snapshots for offline workflows.",
+	"id": "actor:analyst",
+	"links": [],
+	"name": "Analyst",
+	"relations": [],
+	"status": "approved",
+	"type": "actor",
+	"version": "1.0.0"
+}

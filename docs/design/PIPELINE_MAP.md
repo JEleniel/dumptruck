@@ -1,4 +1,4 @@
-# Ingestion & Analysis Pipeline Map
+# Analysis Pipeline Map
 
 Complete synthesis of DumpTruck's data flow from raw input through storage and output.
 
@@ -13,11 +13,11 @@ Raw Data
    ↓
 2. Compression Detection          → ZIP/gzip detection, nested levels (max 3)
    ↓
-3. Ingest & Format Detection      → Identify format, extract fields
+3. Format Detection               → Identify format, extract fields
    ↓
 4. Chain of Custody               → Cryptographically signed record created
    ↓
-5. Safe Ingest & Validation       → Binary check, UTF-8, size limits
+5. Safe Input & Validation        → Binary check, UTF-8, size limits
    ↓
 6. Structural Normalization       → Canonicalize fields and values
    ↓
@@ -33,7 +33,7 @@ Raw Data
    ↓
 12. Analysis & Detection          → PII/NPI, weak passwords, Risk Score (0-100)
    ↓
-13. Storage & Persistence         → PostgreSQL with dedup graph + Chain of Custody
+13. Storage & Persistence         → SQLite (dumptruck.db) with analysis artifacts + Chain of Custody
    ↓
 14. Secure Deletion               → Temporary files shredded (prevent data ghosting)
    ↓
@@ -84,7 +84,7 @@ Raw Data
 
 ---
 
-## Stage 3: Ingest & Format Detection
+## Stage 3: Format Detection
 
 **Input**: Files (compressed or uncompressed) from Stage 2
 
@@ -109,7 +109,7 @@ Raw Data
 **Actions**:
 
 - Create Chain of Custody entry in database
-- Include: file_id, operator (user/service), timestamp, action (ingest), file_hash, record_count_estimate
+- Include: file_id, operator (user/service), timestamp, action (analyze), file_hash, record_count_estimate
 - Sign entry with system private key (ED25519)
 - Log entry as immutable record
 
@@ -123,7 +123,7 @@ Raw Data
 
 ---
 
-## Stage 5: Safe Ingest & Validation
+## Stage 5: Safe Input & Validation
 
 **Input**: Raw bytes + format information
 
@@ -192,15 +192,15 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 **Output**: Records with field classifications + documentation in metadata
 
-**Storage**: Enhanced metadata (field_classifications JSONB)
+**Storage**: Enhanced metadata (field_classifications JSON stored as TEXT)
 
-**Code**: `src/field_identification.rs`, `src/detection.rs`
+**Code**: Field detection/classification lives under `src/analyze/detection/`.
 
 ---
 
 ## Stage 8: Alias Resolution
 
-**Input**: Alias-resolved records
+**Input**: Field-classified records
 
 **Actions**:
 
@@ -216,7 +216,7 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 **Storage**: `alias_relationships` table with (primary_id, alias_id, relationship_type, confidence_score)
 
-**Code**: `src/alias_resolution.rs`, `src/normalization.rs`
+**Code**: `src/util/normalize/alias_resolution.rs` and adjacent normalization utilities.
 
 ---
 
@@ -236,9 +236,9 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 **Layer B — Vector Similarity**:
 
 - Generate 768-dim Nomic embedding (Ollama)
-- Query pgvector IVFFlat index (cosine similarity)
-- Score ≥ 0.85 → Link as similar
-- Score < 0.85 → Treat as new
+- If enabled, persist embeddings alongside the normalized representation
+- Similarity search is performed in-process (cosine similarity) rather than via a database extension
+- Threshold defaults to 0.85 (configurable)
 
 **Layer C — Bloom Filter Sync** (distributed):
 
@@ -254,7 +254,7 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 **Output**: Records classified as new, duplicate, or similar
 
-**Code**: `src/hash_utils.rs`, `src/ollama.rs`, `src/peer_discovery.rs`, `src/field_hashing.rs`
+**Code**: Networking primitives live under `src/network/`; embedding generation uses `src/analyze/enrichment/ollama.rs`.
 
 **Detailed Design**: See `docs/DEDUP_ARCHITECTURE.md`
 
@@ -296,9 +296,9 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 **Output**: Anomaly scores (0-100 per record), classification, flagged fields
 
-**Storage**: `anomaly_scores` table with (record_id, anomaly_type, score, details JSONB)
+**Storage**: `anomaly_scores` records with structured details stored as JSON (TEXT)
 
-**Code**: `src/anomaly_detection.rs`, `src/entropy.rs`
+**Code**: See `src/analyze/` and `src/util/normalize/` for current pipeline implementation details.
 
 ---
 
@@ -312,14 +312,14 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 - Source: Ollama/Nomic API (768-dim)
 - Use: Semantic similarity, near-duplicate clustering
-- Storage: `canonical_addresses.embedding`
+- Storage: persisted as part of the SQLite dataset (implementation-dependent)
 
 **Breach Data (HIBP)**:
 
 - Source: Have I Been Pwned API v3
 - Data: Breach names, dates, domains, pwn counts
 - Storage: `address_breaches` table
-- **Background Thread** (Server Mode Only): Continuously calls HIBP with each new email address in background, enriches corpus without blocking ingest
+- **Background Thread** (Server Mode Only): Continuously calls HIBP with each new email address in background, enriches corpus without blocking analysis
 
 **Co-occurrence Graph**:
 
@@ -336,7 +336,7 @@ _Non-Semantic_: Exclude UUIDs, timestamps, checksums, audit fields
 
 **Output**: Enriched records with embeddings, breach history, graph, domain variants
 
-**Code**: `src/enrichment.rs`, `src/ollama.rs`, `src/hibp.rs`
+**Code**: Enrichment code lives under `src/analyze/enrichment/`.
 
 **Detailed Design**: See `docs/ENRICHMENT.md`
 
@@ -412,10 +412,11 @@ Calculated from:
 - address_text (TEXT, UNIQUE)
 - normalized_form (TEXT)
 - embedding (vector(768))
-- field_classifications (JSONB): PII types, detection results
+- embedding (BLOB or TEXT; 768-dim vector)
+- field_classifications (JSON stored as TEXT): PII types, detection results
 - risk_score (INT, 0-100)
-- anomaly_scores (JSONB)
-- metadata (JSONB): PII types, detection results
+- anomaly_scores (JSON stored as TEXT)
+- metadata (JSON stored as TEXT): PII types, detection results
 
 **address_breaches**:
 
@@ -429,7 +430,7 @@ Calculated from:
 - address_a_hash, address_b_hash (FKs)
 - relationship_count
 - first_seen, updated_at
-- metadata (JSONB): context, source
+- metadata (JSON stored as TEXT): context, source
 
 **address_alternates**:
 
@@ -450,13 +451,13 @@ Calculated from:
 - record_id (UUID, PK)
 - anomaly_type (TEXT)
 - score (INT, 0-100)
-- details (JSONB)
+- details (JSON stored as TEXT)
 
-**Indexes**: PK, UNIQUE, pgvector IVFFlat, FKs, timestamps
+**Indexes**: PK, UNIQUE, FKs, timestamps (SQLite)
 
-**Privacy**: Plaintext stored in `address_text`; history as non-reversible SHA-256 hashes; optional pgcrypto encryption
+**Privacy**: Plaintext stored in `address_text`; history as non-reversible SHA-256 hashes
 
-**Code**: `src/storage.rs`, `src/chain_of_custody.rs`, `src/evidence.rs`, schema in `docker/postgres/init-db.sql`
+**Code**: SQLite storage and schema management is implemented under `src/database/`.
 
 ---
 
@@ -533,11 +534,11 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 **Server Mode** (`src/server.rs`):
 
 - TLS 1.3+ with OAuth 2.0
-- REST API (`POST /api/v1/ingest`, `GET /api/v1/status/{id}`)
+- REST API (submit analysis jobs via `POST /api/v1/ingest`, check status via `GET /api/v1/status/{id}`)
 - Background worker pool
 - Job queue for async processing
 - Horizontal scaling ready
-- **Background HIBP Thread**: Continuously queries Have I Been Pwned with each new email, enriches corpus without blocking ingest
+- **Background HIBP Thread**: Continuously queries Have I Been Pwned with each new email, enriches corpus without blocking analysis
 - Chain of Custody signatures for audit trail
 - Secure deletion of temporary files (shredding)
 
@@ -555,7 +556,7 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 - Compression errors → Log, process as-is
 - Nested compression > 3 levels → Log warning, process as-is
 
-**Zero-Crash Guarantee**: All errors caught, logged, processing continues
+**Design goal**: Errors are caught and logged; processing continues when safe to do so
 
 ---
 
@@ -564,11 +565,11 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 | Metric                | Value          | Notes                                     |
 | --------------------- | -------------- | ----------------------------------------- |
 | Throughput            | 800+ req/sec   | Raspberry Pi 5 with TLS                   |
-| Latency               | <100ms typical | 1KB-1MB ingest                            |
+| Latency               | <100ms typical | 1KB-1MB analyze                           |
 | Memory                | O(1) constant  | Stream-oriented                           |
 | File Size             | GB/TB capable  | 100MB per-file limit                      |
 | Embedding             | 100-200ms each | Per address                               |
-| Vector Search         | 10-50ms        | IVFFlat index                             |
+| Vector Similarity     | TBD            | In-process (no database extension)        |
 | Hash Lookup           | <1ms           | O(1) database                             |
 | Evidence Preservation | <1ms           | UUID + dual hashing                       |
 | Compression Detection | 1-50ms         | Archive scanning                          |
@@ -579,9 +580,9 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 
 ## Testing Coverage
 
-**Unit Tests**: 140+ covering format detection, normalization, deduplication, detection, storage, anomaly detection, evidence preservation, secure deletion
+**Unit Tests**: Cover format detection, normalization, detection, storage, and pipeline safety properties
 
-**Integration Tests**: Multi-format ingestion, deduplication, enrichment, output generation, compression handling, Chain of Custody
+**Integration Tests**: Multi-format analysis, enrichment, output generation, compression handling, Chain of Custody
 
 **Fixtures**: 22 CSV files with 348+ rows covering unique addresses, hashed credentials, weak passwords, PII, international formats
 
@@ -603,17 +604,14 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 
 **Key Settings**:
 
-- `storage`: "database" or "filesystem"
-- `database`: PostgreSQL connection string
-- `ollama_url`: [localhost:11435](http://localhost:11435) (or custom)
-- `hibp_api_key`: API key for breach lookup
-- `hibp_background_enabled`: Enable background enrichment in server mode (default: true)
-- `max_compression_depth`: Maximum nested compression levels (default: 3)
-- `workers`: Worker thread count
-- `max_file_size_mb`: 100 (default)
-- `tls_cert`, `tls_key`: TLS certificate paths
-- `enable_secure_deletion`: Shred temporary files (default: true)
-- `secure_deletion_passes`: Number of overwrite passes (default: 3)
+- `paths.db_path`: Location for the SQLite database file(s)
+- `paths.temp_path`: Temporary workspace for extraction/processing
+- `services.enable_embeddings`: Enable embedding generation
+- `services.ollama.url`: Ollama base URL (default: `http://localhost:11434`)
+- `services.ollama.vector_threshold`: Similarity threshold for near-duplicate heuristics
+- `email_suffix_substitutions`: Domain variant substitution list
+- `server.bind_addresses`, `server.port`: Listener configuration
+- `server.tls_cert_path`, `server.tls_key_path`: TLS material paths
 
 ---
 
@@ -626,8 +624,7 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 
 **Storage Backends** (`src/storage.rs`):
 
-- Implement `StorageAdapter` trait
-- PostgreSQL, Filesystem, S3 (planned)
+- SQLite is the authoritative persistent store; `export`/`import` provide snapshot sharing
 
 **Enrichment Plugins** (`src/enrichment.rs`):
 

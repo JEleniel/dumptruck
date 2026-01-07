@@ -1,0 +1,10 @@
+{
+	"id": "link:actor:maintainers:driver:dumptruck-root:stakeholder",
+	"metadata": {
+		"context": "governance"
+	},
+	"rationale": "Maintainership is the primary governance stakeholder for the Dumptruck mission and architecture.",
+	"source": "actor:maintainers",
+	"strength": "strong",
+	"target": "driver:dumptruck-root"
+}

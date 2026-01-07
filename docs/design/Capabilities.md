@@ -2,25 +2,25 @@
 
 ## Overview
 
-DumpTruck ingests, normalizes, deduplicates, and enriches bulk data dumps through a multi-layer normalization and comparison pipeline. This document specifies the normalization and validation requirements for each pipeline stage.
+DumpTruck analyzes, normalizes, deduplicates, and enriches bulk data dumps through a multi-layer normalization and comparison pipeline. This document specifies the normalization and validation requirements for each pipeline stage.
 
 ---
 
-## 1. Data Ingestion & Format Detection
+## 1. Data Input & Format Detection
 
 ### Requirements
 
 - **Format Detection**: Automatically identify file format (CSV, TSV, JSON, YAML, XML, Protocol Buffers, BSON) using fingerprints and headers
 - **Multi-Size Support**: Handle files of unknown size without size limits; use streaming for memory efficiency
 - **Field Identification**: Extract and catalog field names, types, and constraints from data
-- **Integrity Verification**: Compute multi-hash signatures (SHA-256) of ingested files to detect exact duplicates
-- **Duplicate Detection**: Compare hash signatures to previously stored signatures in data store; skip re-ingestion if duplicate
+- **Integrity Verification**: Compute multi-hash signatures (SHA-256) of analyzed files to detect exact duplicates
+- **Duplicate Detection**: Compare hash signatures to previously stored signatures in data store; skip re-analysis if duplicate
 
 ---
 
 ## 2. Structural Normalization
 
-Normalize raw ingested data into well-formed, canonical CSV with UTF-8 encoding.
+Normalize raw input data into well-formed, canonical CSV with UTF-8 encoding.
 
 ### Field & Column Normalization
 
@@ -175,7 +175,7 @@ Choose comparison semantics explicitly based on use case:
 Apply normalization in this order to ensure deterministic, valid comparisons:
 
 ```text
-1. Safe Ingestion    → Format detection, encoding validation, size checks
+1. Safe Input        → Format detection, encoding validation, size checks
 2. Structure         → Field names, types, ordering, column canonicalization
 3. Values            → Numeric, boolean, date, whitespace normalization
 4. Semantics         → Domain equivalence, null handling, PII detection
@@ -193,7 +193,7 @@ Apply normalization in this order to ensure deterministic, valid comparisons:
 
 ### File Identification
 
-Every ingested file receives:
+Every analyzed file receives:
 
 - **File ID**: UUID v4 (immutable, unique identifier)
 - **SHA-256 Hash**: Standard cryptographic hash
@@ -203,7 +203,7 @@ Every ingested file receives:
 
 ### Purpose
 
-- Forensic verification: Re-ingest same file, compare hashes for integrity
+- Forensic verification: Re-analyze same file, compare hashes for integrity
 - Chain of evidence: Immutable proof of file identity
 - Compliance: GDPR, HIPAA, PCI-DSS audit trail requirements
 
@@ -375,13 +375,13 @@ Score = min(100,
 
 ### Signature Record
 
-Each file ingestion generates:
+Each analysis submission generates:
 
 - **Entry ID**: UUID v4
 - **File ID**: Reference to file_metadata
 - **Operator**: User/service identity (from OAuth token)
-- **Timestamp**: ISO-8601 ingestion time
-- **Action**: "ingest", "enrich", "analyze"
+- **Timestamp**: ISO-8601 analysis time
+- **Action**: "analyze", "enrich", "export", "import"
 - **File Hash**: SHA-256 (immutable proof)
 - **Record Count**: Number of records processed
 - **ED25519 Signature**: Cryptographic proof of operator + timestamp + data
@@ -400,7 +400,7 @@ Each file ingestion generates:
 | Capability | Status | Location |
 |------------|--------|----------|
 | Format detection | ✅ Implemented | `src/adapters.rs` |
-| Streaming ingest | ✅ Implemented | `src/safe_ingest.rs`, `src/streaming.rs` |
+| Streaming read | ✅ Implemented | `src/safe_ingest.rs`, `src/streaming.rs` |
 | Unicode normalization | ✅ Implemented | `src/normalization.rs` |
 | Hashing & deduplication | ✅ Implemented | `src/hash_utils.rs` |
 | Email canonicalization | ✅ Implemented | `src/npi_detection.rs` |

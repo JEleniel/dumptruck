@@ -1,0 +1,23 @@
+{
+	"audit_history": [
+		{
+			"by": "agent:architect",
+			"event": "created",
+			"event_time": "2026-01-07T00:00:00Z",
+			"note": "Declared primary project owner/stakeholder for AURORA provenance references."
+		}
+	],
+	"attributes": {
+		"responsibilities": ["architecture", "maintenance", "releases", "security"],
+		"type": "team"
+	},
+	"constraints": [],
+	"description": "Project maintainers define and evolve the Dumptruck architecture, review changes, and operate release/security processes.",
+	"id": "actor:maintainers",
+	"links": [],
+	"name": "Project Maintainers",
+	"relations": [],
+	"status": "approved",
+	"type": "actor",
+	"version": "1.0.0"
+}

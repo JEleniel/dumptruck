@@ -1,0 +1,28 @@
+{
+	"audit_history": [
+		{
+			"by": "agent:architect",
+			"event": "created",
+			"event_time": "2026-01-07T00:00:00Z",
+			"note": "Initial AURORA Root Driver synthesized from existing design docs."
+		}
+	],
+	"attributes": {
+		"primary_modes": ["cli", "server"],
+		"repository": "JEleniel/dumptruck",
+		"scope": "Analyze, normalize, deduplicate, enrich, and report on bulk data dumps; optionally synchronize privacy-preserving intelligence with trusted peers."
+	},
+	"constraints": [],
+	"description": "Dumptruck exists to securely analyze bulk data dumps (e.g., breach/leak datasets) in a privacy-preserving way, producing actionable reports and building reusable intelligence (deduplication, enrichment, history) while supporting both standalone CLI and HTTPS server operation.",
+	"id": "driver:dumptruck-root",
+	"links": [],
+	"name": "Dumptruck: Privacy-Preserving Data Dump Analysis",
+	"provenance": {
+		"owner": "actor:maintainers",
+		"source": "docs/design/README.md; docs/architecture/ARCHITECTURE.md; docs/design/PIPELINE_MAP.md"
+	},
+	"relations": [],
+	"status": "approved",
+	"type": "driver",
+	"version": "1.0.0"
+}
