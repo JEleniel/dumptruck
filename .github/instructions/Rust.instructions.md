@@ -1,5 +1,5 @@
 ---
-applyTo: '*'
+applyTo: '*.rs'
 ---
 
 # Rust Style Guide
@@ -10,6 +10,9 @@ This document defines formatting and style conventions for all Rust source code 
 
 ## Formatting Rules
 
+- Use `cargo fmt` to format Rust files.
+- Use `cargo clippy` to lint Rust files.
+- Use `cargo test` to run tests.
 - **Version** Always use the Rust 2004 or later edition.
 - **Organization** Organize code into modules logically, and use submodules as needed. Minimize top level `*.rs` files by grouping related functionality into modules. Use the 2024 style of `<name.rs>` and `<name>/` directories for modules. Do NOT use `mod.rs` files.
 - **Minimize Lines per File** Aim for a maximum of 200 lines per file. Split large files into smaller, focused modules. Modules should be in files named for the module. Do not mix multiple modules in a single file.

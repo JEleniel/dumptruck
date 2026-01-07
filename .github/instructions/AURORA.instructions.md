@@ -1,5 +1,5 @@
 ---
-applyTo: '*.*'
+applyTo: '**/*'
 ---
 # AURORA Machine Agent Instruction
 

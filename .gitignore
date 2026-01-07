@@ -32,6 +32,11 @@
 .history/
 .vscode-test
 *.vsix
+.codacy
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+.github/instructions/IDE.instructions.md
 
 # Archive Files
 *.7z
