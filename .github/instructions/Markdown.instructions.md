@@ -10,6 +10,7 @@ This document defines formatting and style conventions for all Markdown document
 
 ## Documentation Conventions
 
+- Name Markdown files using title case without spaces or punctuation (excluding the extension separator period).
 - Use clear, well-structured GitHub‑Flavored Markdown (GFM).
 - Match the tone, style, and structure of existing documentation.
 - Cross-reference related docs where relevant; include appropriate direct links.

@@ -137,7 +137,7 @@ Exclude or isolate fields that are non-deterministic or system-generated:
     + General: IP addresses, digital wallets
 
 - **Weak Password Detection**:
-    + Plaintext: Detection via rainbow table (40+ common passwords)
+    + Plaintext: Detection via rainbow table (40+ common passwords; extendable via [wordlist folder import](cards/requirement-rainbow-table-folder-import.md))
     + Hashed: Detection of weak passwords in bcrypt, scrypt, argon2, MD5, SHA1, SHA256 formats
 
 - **Breach Enrichment**:
@@ -160,13 +160,13 @@ After all normalization layers:
 
 Choose comparison semantics explicitly based on use case:
 
-| Strategy   | Use Case                           | Implementation |
-|------------|------------------------------------|----|
-| Exact      | Integrity verification, checksums | Byte-for-byte hash match |
-| Field-wise | ETL validation, schema compliance  | Per-field comparison with rules |
-| Semantic   | Business logic, domain rules       | Value normalization + equivalence checks |
-| Fuzzy      | Human-entered data, typos          | Levenshtein/Jaro-Winkler distance |
-| Tolerant   | Measurements, floating-point       | Epsilon-based threshold comparison |
+| Strategy | Use Case | Implementation |
+| --- | --- | --- |
+| Exact | Integrity verification, checksums | Byte-for-byte hash match |
+| Field-wise | ETL validation, schema compliance | Per-field comparison with rules |
+| Semantic | Business logic, domain rules | Value normalization + equivalence checks |
+| Fuzzy | Human-entered data, typos | Levenshtein/Jaro-Winkler distance |
+| Tolerant | Measurements, floating-point | Epsilon-based threshold comparison |
 
 ---
 
@@ -398,7 +398,7 @@ Each analysis submission generates:
 ## Implementation Status
 
 | Capability | Status | Location |
-|------------|--------|----------|
+| --- | --- | --- |
 | Format detection | ✅ Implemented | `src/adapters.rs` |
 | Streaming read | ✅ Implemented | `src/safe_ingest.rs`, `src/streaming.rs` |
 | Unicode normalization | ✅ Implemented | `src/normalization.rs` |

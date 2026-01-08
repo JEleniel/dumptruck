@@ -14,7 +14,7 @@ This document summarizes the SQLite database layer implemented under `src/databa
 + `src/database/migrationtrait.rs` — `MigrationTrait` interface (`create`/`upgrade`/`downgrade`)
 + `src/database/metadata.rs` — metadata table helpers (e.g., migration version, database UUID)
 + `src/database/npi.rs` — storage for detected NPI/PII-derived indicators
-+ `src/database/rainbowtable.rs` — storage for precomputed weak-password/rainbow indicators
++ `src/database/rainbowtable.rs` — storage for precomputed weak-password/rainbow indicators (including imported wordlist folder seeds)
 
 ## Public API highlights
 

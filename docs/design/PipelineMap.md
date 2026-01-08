@@ -358,7 +358,7 @@ _General_: IP addresses, digital wallets, emails
 
 **Weak Password Detection**:
 
-_Plaintext_: Rainbow table (40+ common passwords), dynamic loading from `data/wordlists/`
+_Plaintext_: Rainbow table (40+ common passwords; extend/replace via [wordlist folder import](cards/requirement-rainbow-table-folder-import.md))
 
 _Pre-Hashed_: MD5, SHA1, SHA256 (unsalted); bcrypt, scrypt, argon2 (salted)
 
@@ -641,7 +641,7 @@ _Aggregate_: Total unique addresses, hashed credentials detected, weak passwords
 ## Related Documentation
 
 - **Capabilities.md** — Detailed normalization requirements (8 stages)
-- **DEDUP_ARCHITECTURE.md** — Deduplication design and database schema
+- **DedupArchitecture.md** — Deduplication design and database schema
 - **ENRICHMENT.md** — Enrichment sources and strategies
 - **ARCHITECTURE.md** — System architecture overview
 - **COMPONENTS.md** — Component-level design details

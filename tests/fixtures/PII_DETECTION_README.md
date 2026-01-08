@@ -1,6 +1,6 @@
 # Comprehensive PII/NPI Detection Test Data
 
-This directory contains test CSV files designed to trigger all detection capabilities in Dumptruck's ingest pipeline. Each file targets specific detection scenarios.
+This directory contains test CSV files designed to trigger detection capabilities in Dumptruck's analysis pipeline. Each file targets specific detection scenarios.
 
 ## Test Data Files
 
@@ -58,7 +58,7 @@ This directory contains test CSV files designed to trigger all detection capabil
 - Number of breaches per account
 - Breach dates and password change status
 
-**Expected Detection**: When HIBP API is enabled (`--hibp` flag), should identify which addresses appear in known breach databases.
+**Expected Detection**: This fixture is intended for breach-history enrichment workflows. The current CLI does not expose HIBP lookups.
 
 ### `pii_detection.csv`
 
@@ -129,49 +129,35 @@ This directory contains test CSV files designed to trigger all detection capabil
 ### Test single file
 
 ```bash
-./dumptruck ingest "./tests/fixtures/unique_addresses.csv" -v
-./dumptruck ingest "./tests/fixtures/pii_detection.csv" -v
+./dumptruck -v analyze "./tests/fixtures/unique_addresses.csv"
+./dumptruck -v analyze "./tests/fixtures/pii_detection.csv"
 ```
 
 ### Test all detection files with logging
 
 ```bash
-./dumptruck ingest "./tests/fixtures/*detection*.csv" -vv
-./dumptruck ingest "./tests/fixtures/*pii*.csv" -vv
-./dumptruck ingest "./tests/fixtures/crypto_and_financial_pii.csv" -vv
+./dumptruck -vv analyze "./tests/fixtures/*detection*.csv"
+./dumptruck -vv analyze "./tests/fixtures/*pii*.csv"
+./dumptruck -vv analyze "./tests/fixtures/crypto_and_financial_pii.csv"
 ```
 
-### Test with HIBP breach lookups (requires HIBP API key)
+### Test breached-addresses fixture
 
 ```bash
-./dumptruck ingest "./tests/fixtures/breached_addresses.csv" \
-    --hibp \
-    --hibp-key YOUR_HIBP_API_KEY \
-    -v
+./dumptruck -v analyze "./tests/fixtures/breached_addresses.csv"
 ```
 
-### Test with Ollama embeddings (for similarity detection)
+### Test with Ollama embeddings
 
 ```bash
-./dumptruck ingest "./tests/fixtures/unique_addresses.csv" \
-    --embeddings \
-    --ollama-url http://localhost:11435 \
-    -v
+./dumptruck -v analyze "./tests/fixtures/unique_addresses.csv" --enable-embeddings
 ```
 
-## Current Implementation Status
+## Feature Availability Notes
 
-**Note**: The current ingest handler is a placeholder that counts rows only. The following detections are implemented in the codebase but not yet wired into the ingest pipeline:
-
-- ✅ PII/NPI Detection (`src/npi_detection.rs`)
-- ✅ Weak Password Detection (`src/rainbow_table.rs`)
-- ✅ Hashed Credential Detection (Rainbow table hashing)
-- ✅ HIBP Integration (`src/hibp.rs`)
-- ✅ Email Canonicalization (`src/normalization.rs`)
-- ✅ Ollama Embeddings (`src/ollama.rs`)
-- ⏳ Full Pipeline Integration (in development)
-
-These test files are prepared for when the full detection pipeline is integrated into the ingest handler.
+- These fixtures are intended for use with `dumptruck analyze` and automated tests.
+- HIBP lookups are not currently exposed via CLI flags.
+- Embeddings are controlled via configuration and can be enabled for `analyze` with `--enable-embeddings`.
 
 ## Data Integrity Notes
 

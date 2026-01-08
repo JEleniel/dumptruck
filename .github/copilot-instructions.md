@@ -34,7 +34,7 @@ In addition, a compressed copy of the IDE memory will be placed at the end of th
 **Example Feature Entry:**
 
 ```markdown
--   **Analysis**: Provide bulk-analysis operations to find new, repeated, and anomalous leaked data.
+-   [ ] **Analysis**: Provide bulk-analysis operations to find new, repeated, and anomalous leaked data.
     -   Status: Pending
     -   [AURORA Feature Card](docs/design/example/feature.json)
     -   [AURORA Feature Card (Human)](docs/design/example/feature.md)
@@ -87,3 +87,7 @@ In addition, a compressed copy of the IDE memory will be placed at the end of th
 -   Use `mcp_cargo-mcp_*` for Rust cargo operations when available.
 -   Only run one command at a time; do not chain commands.
 -   Use `prettier` for formatting code where applicable.
+
+## Additional Guidelines
+
+-   You MUST NOT rely on git status or diffs to determine what has changed. Always track your own changes and ensure that you understand the full context of the project. Assume that any changes you are not familiar with were made by other collaborators and may be incomplete or in-progress.

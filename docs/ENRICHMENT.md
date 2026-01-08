@@ -13,7 +13,7 @@ The enrichment pipeline augments canonical address records with:
 
 ## Architecture
 
-```
+```text
 Input Address
     │
     ├─→ Normalization
@@ -184,7 +184,7 @@ john.doe@example.com,password123,jane.smith@example.com,secret456
 
 Canonical addresses with enrichment:
 
-```
+```text
 john.doe@example.com
   ├─ Embedding: [0.234, -0.456, ...] (768-dim)
   ├─ Breaches: LinkedIn, Yahoo
@@ -271,25 +271,33 @@ let results = join_all(tasks).await;
 
 ## Configuration
 
-### Environment Variables
+### Configuration file
 
-```bash
-# Ollama
-export OLLAMA_HOST="http://localhost:11434"
+Dumptruck is configured via JSON files. See [CONFIGURATION.md](CONFIGURATION.md) for file locations and overrides.
 
-# HIBP API
-export DUMPTRUCK_HIBP_API_KEY="your-api-key"
-
-# PostgreSQL
-export DUMPTRUCK_PG_CONN="postgresql://user:pass@host/dumptruck"
+```json
+{
+  "api_keys": [
+    {
+      "name": "haveibeenpwned",
+      "api_key": "YOUR_KEY_HERE"
+    }
+  ],
+  "services": {
+    "enable_embeddings": true,
+    "ollama": {
+      "url": "http://localhost:11434",
+      "vector_threshold": 0.85
+    }
+  }
+}
 ```
 
 ### Tuning Parameters
 
 | Parameter | Default | Recommendation |
-|---|---|---|
+| --- | --- | --- |
 | Vector similarity threshold | 0.85 | 0.80-0.90 |
-| IVFFlat lists | 100 | 50-300 (larger datasets: higher) |
 | HIBP rate limit | 1 req/sec | 10 req/sec (with API key) |
 | Embedding batch size | 1 | 10-50 (for throughput) |
 | HIBP retry delay | exponential | Start at 1s, max 60s |
@@ -321,7 +329,7 @@ eprintln!("  Stored: {}", if new { "new" } else { "deduplicated" });
 ### Common Issues
 
 | Issue | Cause | Solution |
-|---|---|---|
+| --- | --- | --- |
 | Slow embedding generation | Model loading | Increase concurrency, cache embeddings |
 | HIBP rate limit errors | Too many requests | Use API key, implement exponential backoff |
 | Duplicate false negatives | Low similarity threshold | Increase threshold, review manual cases |

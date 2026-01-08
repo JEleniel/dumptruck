@@ -2,9 +2,13 @@
 
 This document describes the integration with the Have I Been Pwned API for breach data enrichment.
 
+## Status
+
+Dumptruck includes an internal HIBP API client module, but HIBP enrichment is not currently exposed as a supported CLI feature.
+
 ## Overview
 
-Dumptruck uses the [HIBP API v3](https://haveibeenpwned.com/API/v3) to enrich canonical address records with real-world breach intelligence. For each canonical email address, Dumptruck queries HIBP to identify:
+This document describes the [HIBP API v3](https://haveibeenpwned.com/API/v3) and the intended breach-data enrichment behavior. For each canonical email address, HIBP can provide:
 
 - **Breaches**: Which public data breaches have included this address
 - **Exposure Count**: How many times the address appeared across breaches
@@ -32,93 +36,15 @@ While HIBP API v3 is free and requires only a User-Agent header, obtaining an AP
 
 ### Configuration
 
-Environment variable for API key:
+HIBP API keys are optional. When used, treat them as secrets and inject them using your deployment tooling or secrets manager.
 
-```bash
-# Production
-export DUMPTRUCK_HIBP_API_KEY="your-api-key-here"
+## Implementation Notes
 
-# Testing
-export DUMPTRUCK_HIBP_API_KEY="00000000000000000000000000000000"
-```
-
-## Usage in Code
-
-### Basic Query
-
-```rust
-use dumptruck::hibp::HibpClient;
-
-#[tokio::main]
-async fn main() -> std::io::Result<()> {
-    // Create client with optional API key from environment
-    let api_key = std::env::var("DUMPTRUCK_HIBP_API_KEY").ok();
-    let client = HibpClient::new_default(api_key);
-
-    // Get all breaches for an address
-    let breaches = client.get_breaches_for_address("john.doe@example.com").await?;
-    for breach in &breaches {
-        println!("Breach: {} (affected: {} users)", breach.name, breach.pwn_count);
-    }
-
-    // Check if address is breached
-    let is_breached = client.is_breached("john.doe@example.com").await?;
-    println!("Breached: {}", is_breached);
-
-    // Get total exposed count
-    let total = client.pwn_count("john.doe@example.com").await?;
-    println!("Total exposures: {}", total);
-
-    Ok(())
-}
-```
-
-### Storing Breach Data
-
-```rust
-use dumptruck::storage::{PostgresStorage, StorageAdapter};
-use dumptruck::hibp::HibpClient;
-
-let mut storage = PostgresStorage::new_from_env()?;
-let client = HibpClient::new_default(api_key);
-
-// Get breaches for canonical address
-let breaches = client.get_breaches_for_address(&address_text).await?;
-
-// Store each breach in the database
-for breach in breaches {
-    storage.insert_address_breach(
-        &canonical_hash,
-        &breach.name,
-        Some(&breach.title),
-        Some(&breach.domain),
-        Some(&breach.breach_date),
-        Some(breach.pwn_count as i32),
-        Some(&breach.description),
-        breach.is_verified,
-        breach.is_fabricated,
-        breach.is_sensitive,
-        breach.is_retired,
-    )?;
-}
-```
-
-### Querying Stored Breaches
-
-```rust
-// Get all breaches for a canonical address
-let breaches = storage.get_breaches_for_address(&canonical_hash)?;
-for (breach_name, pwn_count) in breaches {
-    println!("Breach: {} (exposures: {})", breach_name, pwn_count);
-}
-
-// Get breach statistics
-let breach_count = storage.get_breach_count(&canonical_hash)?;
-let total_exposed = storage.get_total_pwn_count(&canonical_hash)?;
-println!("Breaches: {}, Total exposed: {}", breach_count, total_exposed);
-```
+The internal HIBP client lives under the enrichment modules and requires a User-Agent and an optional API key. This document is primarily a reference for the external API and intended behavior.
 
 ## Database Schema
+
+This section describes a conceptual schema for breach persistence.
 
 The `address_breaches` table stores:
 
@@ -171,7 +97,7 @@ Returns all breaches containing the email address.
 ### Rate Limiting
 
 | Configuration | Rate Limit |
-|---|---|
+| --- | --- |
 | Without API key | 1 request/second |
 | With API key | 10+ requests/second |
 | Burst limit | Subject to fair use policy |
@@ -200,7 +126,7 @@ Returns all breaches containing the email address.
 
 ## Workflow Integration
 
-### Ingestion Pipeline
+### Analysis Pipeline
 
 1. **Normalize Address** → Compute canonical hash
 2. **Generate Embedding** → Get vector representation
@@ -208,59 +134,6 @@ Returns all breaches containing the email address.
 4. **Store Breaches** → Save breach data in `address_breaches` table
 5. **Dedup Check** → Check for duplicates (hash + vector)
 6. **Store Canonical** → Create/link canonical address record
-
-### Example Code
-
-```rust
-use dumptruck::normalization::normalize_field;
-use dumptruck::storage::PostgresStorage;
-use dumptruck::ollama::OllamaClient;
-use dumptruck::hibp::HibpClient;
-
-async fn process_address(
-    storage: &mut PostgresStorage,
-    ollama: &OllamaClient,
-    hibp: &HibpClient,
-    address_text: &str,
-) -> std::io::Result<()> {
-    // 1. Normalize
-    let normalized = normalize_field(address_text);
-    let canonical_hash = sha256(&normalized);
-
-    // 2. Embed
-    let embedding = ollama.embed(&address_text).await?;
-
-    // 3. Check HIBP
-    let breaches = hibp.get_breaches_for_address(address_text).await?;
-    for breach in &breaches {
-        storage.insert_address_breach(
-            &canonical_hash,
-            &breach.name,
-            Some(&breach.title),
-            Some(&breach.domain),
-            Some(&breach.breach_date),
-            Some(breach.pwn_count as i32),
-            Some(&breach.description),
-            breach.is_verified,
-            breach.is_fabricated,
-            breach.is_sensitive,
-            breach.is_retired,
-        )?;
-    }
-
-    // 4. Dedup check
-    if let Some(dup) = storage.find_duplicate_address(&canonical_hash, Some(&embedding), 0.85)? {
-        // Link to existing canonical address
-        storage.insert_address_alternate(&dup, &canonical_hash, &address_text)?;
-    } else {
-        // Store new canonical address
-        storage.insert_canonical_address(&canonical_hash, address_text, &normalized)?;
-        storage.update_address_embedding(&canonical_hash, &embedding)?;
-    }
-
-    Ok(())
-}
-```
 
 ## Performance Notes
 
@@ -272,7 +145,7 @@ async fn process_address(
 ## Privacy & Security
 
 - **Data Retention**: Breach metadata is public information; no sensitive PII is stored
-- **API Key**: Treat HIBP API keys as sensitive credentials (use environment variables)
+- **API Key**: Treat HIBP API keys as sensitive credentials
 - **User-Agent**: Required header identifies your application to HIBP
 - **Rate Limiting**: Respect rate limits to avoid temporary IP blocks
 

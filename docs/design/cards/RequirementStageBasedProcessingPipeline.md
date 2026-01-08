@@ -18,9 +18,13 @@ Dumptruck must process inputs via a stage-based pipeline that is explicit, compo
 
 ## Sources
 
-- [docs/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
-- [docs/architecture/COMPONENTS.md](../architecture/COMPONENTS.md)
-- [docs/design/PIPELINE_MAP.md](../design/PIPELINE_MAP.md)
+- [docs/design/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- [docs/design/architecture/COMPONENTS.md](../architecture/COMPONENTS.md)
+- [docs/design/PipelineMap.md](../PipelineMap.md)
+
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
 
 ## Canonical JSON
 

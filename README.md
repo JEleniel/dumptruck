@@ -2,7 +2,7 @@
 
 **A high-performance bulk data analysis system for threat intelligence and credential breach analysis.**
 
-Dumptruck ingests, normalizes, and analyzes large data dumps with surgical precision. Designed for security teams analyzing credential leaks, breach datasets, and threat intelligence at scale—processing gigabytes of data in memory-efficient streaming pipelines while maintaining complete privacy of historical records through non-reversible hashing.
+Dumptruck safely processes, normalizes, and analyzes large data dumps with surgical precision. Designed for security teams analyzing credential leaks, breach datasets, and threat intelligence at scale—processing gigabytes of data in memory-efficient streaming pipelines while maintaining complete privacy of historical records through non-reversible hashing.
 
 [![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache%202.0-blue)](#license)
 
@@ -15,7 +15,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 - **Smart Normalization** — Intelligently canonicalizes data across Unicode variants, email aliases, and international formats
 - **Privacy-First Architecture** — Historical data stored only as non-reversible hashes; zero exposure even if the database is compromised
 - **Distributed Deduplication** — Peer discovery and Bloom filter sync allow multiple instances to share intelligence without data exposure
-- **Production Ready** — 240 tests, zero unsafe code, comprehensive audit logging, and operational runbooks included
+- **Production Ready** — extensive tests, zero unsafe code, comprehensive audit logging, and operational runbooks included
 
 ---
 
@@ -23,9 +23,9 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 
 ### Data Ingestion & Processing
 
-- **Multiple Format Support**: CSV, TSV, JSON, YAML, XML, Protocol Buffers, BSON with extensible adapter pattern
+- **Multiple Format Support**: CSV, TSV, PSV with an extensible adapter pattern
 - **Memory-Efficient Streaming**: Process GB/TB-scale files with constant memory usage via line-by-line streaming
-- **Parallel Processing**: Batch ingest with glob patterns and configurable worker threads
+- **Parallel Processing**: Batch analysis with glob patterns and configurable worker threads
 - **Safe Ingestion**: Binary detection, UTF-8 validation with lossy fallback, 100MB file size limits, zero-crash guarantee
 - **Evidence Preservation**: Unique file IDs with SHA-256 hash signatures and alternate name tracking
 - **Compression Detection**: Automatic ZIP/gzip detection with safe nested level limits (max 3 levels)
@@ -115,7 +115,7 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 
 ### Prerequisites
 
-- Rust 1.70+
+- Rust 1.85+ (edition 2024)
 - Ollama 0.1+ (optional, for similarity search)
 - Docker & Docker Compose (optional, for containerized setup)
 
@@ -129,11 +129,11 @@ cd dumptruck
 # Run tests to verify build
 cargo test
 
-# Ingest a CSV file
-cargo run -- ingest tests/fixtures/clean_csv.csv
+# Analyze a CSV file
+cargo run -- analyze tests/fixtures/clean_csv.csv
 
-# Start the server (listens on 0.0.0.0:8443 with TLS)
-cargo run -- server --cert /etc/tls/tls.crt --key /etc/tls/tls.key
+# Start the server (defaults to HTTPS 443; use --port for local dev)
+cargo run -- serve --cert /etc/tls/tls.crt --key /etc/tls/tls.key --port 8443
 ```
 
 ### 2. With Optional Services (Docker Compose)
@@ -146,8 +146,8 @@ docker-compose up -d
 # Run tests to verify setup
 cargo test
 
-# Ingest with embeddings enabled (requires Ollama running)
-cargo run -- ingest data.csv --embeddings --ollama-url http://localhost:11434
+# Analyze with embeddings enabled (requires Ollama running)
+cargo run -- --embeddings --ollama-url http://localhost:11434 analyze data.csv --enable-embeddings
 
 # Stop Ollama when done
 docker-compose down -v
@@ -160,10 +160,10 @@ docker-compose down -v
 cargo build --release
 
 # Run CLI
-./target/release/dumptruck ingest data.csv --output results.json
+./target/release/dumptruck analyze data.csv --output results.json
 
 # Run server
-./target/release/dumptruck server \
+./target/release/dumptruck serve \
   --cert /path/to/cert.pem \
   --key /path/to/key.pem \
   --port 8443
@@ -172,21 +172,20 @@ cargo build --release
 ### 4. Basic Usage Examples
 
 ```bash
-# Single file ingest
-dumptruck ingest data.csv
+# Single file analysis
+dumptruck analyze data.csv
 
-# Batch ingest with glob patterns
-dumptruck ingest "breaches/*.csv" --workers 4
+# Analyze a directory recursively
+dumptruck analyze ./breaches --recursive
 
 # Enable optional services
-dumptruck ingest data.json --hibp --hibp-key YOUR_API_KEY  # Breach enrichment
-dumptruck ingest data.csv --embeddings                      # Vector similarity (requires Ollama)
+dumptruck --embeddings --ollama-url http://localhost:11434 analyze data.csv --enable-embeddings
 
 # Generate report
-dumptruck ingest data.csv --output results.json --format json
+dumptruck analyze data.csv --output results.json
 
 # Check service connectivity
-dumptruck status
+dumptruck status --url https://localhost:8443
 ```
 
 See [CLI_USAGE.md](docs/CLI_USAGE.md) for comprehensive command reference.
@@ -249,7 +248,7 @@ Dumptruck is engineered for scale:
 
 - **Throughput**: >800 concurrent requests/second on Raspberry Pi 5 with TLS 1.3
 - **Memory**: Constant O(1) memory usage via streaming (100GB files in <100MB RAM)
-- **Latency**: Sub-100ms response times for typical 1KB-1MB ingests
+- **Latency**: Sub-100ms response times for typical 1KB-1MB analysis jobs
 - **Deduplication**: O(1) hash lookup + bandwidth-efficient Bloom filter peer sync
 - **Indexing**: pgvector IVFFlat for sub-millisecond similarity search on 1M+ vectors
 
@@ -257,7 +256,7 @@ Run the stress test locally:
 
 ```bash
 # Start the server
-cargo run -- server &
+cargo run -- serve --cert /etc/tls/tls.crt --key /etc/tls/tls.key --port 8443 &
 
 # Run benchmarks
 cargo run --bin stress-test
@@ -271,7 +270,7 @@ cargo run --bin stress-test
 **Code Quality:**
 
 - ✅ 100% safe Rust (zero `unsafe` blocks)
-- ✅ 143+ unit and integration tests (all passing)
+- ✅ Extensive unit and integration tests
 - ✅ OWASP-compliant crypto and authentication
 - ✅ Dependency scanning with cargo-audit (CI/CD automated)
 
@@ -280,7 +279,7 @@ cargo run --bin stress-test
 - ✅ TLS 1.3+ for all network transport
 - ✅ OAuth 2.0 for server authentication
 - ✅ Historical data stored as non-reversible HMAC hashes
-- ✅ Full-disk encryption support (LUKS) + transparent data encryption (pgcrypto)
+- ✅ Full-disk encryption support (e.g., LUKS)
 - ✅ Automatic key rotation with grace periods
 
 **Operational:**
@@ -340,4 +339,4 @@ All commits must be linked to an issue and signed. See CONTRIBUTING.md for detai
 
 ## License
 
-Dumptruck is licensed under the [GNU General Public License v3.0 or later](LICENSE). See [LICENSE](LICENSE) for details.
+Dumptruck is licensed under the [MIT](LICENSE-MIT.md) or [Apache 2.0](LICENSE-Apache.md) license, at the user's discretion. See [LICENSE.md](LICENSE.md) for details.

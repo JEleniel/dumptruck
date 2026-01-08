@@ -105,26 +105,20 @@ PII/NPI Detections:
 
 ```bash
 # Process the file and see detection summary
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv
-
-# Output as JSON for parsing
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv --output-format json
+cargo run --release --bin dumptruck -- analyze data/detection_demo.csv
 
 # Output as human-readable text
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv --output-format text
+cargo run --release --bin dumptruck -- analyze data/detection_demo.csv
 
 # Save results to file
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv --output results.json
+cargo run --release --bin dumptruck -- analyze data/detection_demo.csv --output results.json
 ```
 
 ### With Optional Features
 
 ```bash
-# With HIBP breach enrichment
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv --hibp --hibp-key YOUR_API_KEY
-
 # With Ollama embeddings for similarity search
-cargo run --release --bin dumptruck -- ingest data/detection_demo.csv --format csv --embeddings --ollama-url http://localhost:11434
+cargo run --release --bin dumptruck -- --embeddings --ollama-url http://localhost:11434 analyze data/detection_demo.csv --enable-embeddings
 ```
 
 ## Data Characteristics

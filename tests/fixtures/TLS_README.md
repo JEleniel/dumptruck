@@ -22,13 +22,13 @@ Format: PEM (Privacy Enhanced Mail)
 Start the Dumptruck server with these certificates:
 
 ```bash
-./target/debug/dumptruck server \
+./target/debug/dumptruck serve \
   --cert tests/fixtures/tls.crt \
   --key tests/fixtures/tls.key \
-  --oauth-client-id test-client \
-  --oauth-client-secret test-secret \
-  --oauth-token-endpoint https://oauth.example.com/token \
-  -vvv
+  --port 8443 \
+  --oauth-id test-client \
+  --oauth-secret test-secret \
+  --oauth-discovery-url https://oauth.example.com/.well-known/openid-configuration
 ```
 
 ## Security Notes

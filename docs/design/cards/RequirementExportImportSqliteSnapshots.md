@@ -21,6 +21,10 @@ Dumptruck must support exporting the current SQLite database to a standalone SQL
 - [src/cli.rs](../../../src/cli.rs)
 - [src/database.rs](../../../src/database.rs)
 
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
+
 ## Canonical JSON
 
 Source of truth: [docs/design/AURORA/cards/requirement-export-import-sqlite-snapshots.json](../AURORA/cards/requirement-export-import-sqlite-snapshots.json)

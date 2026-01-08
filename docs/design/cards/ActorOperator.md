@@ -21,6 +21,10 @@ An operator deploys and manages the Dumptruck server mode, ensuring secure confi
 - Primary interactions: Server
 - Typical tasks: serve, status, configure, rotate-secrets
 
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
+
 ## Canonical JSON
 
 Source of truth: [docs/design/AURORA/cards/actor-operator.json](../AURORA/cards/actor-operator.json)

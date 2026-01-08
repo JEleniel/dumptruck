@@ -12,11 +12,11 @@ Logical data flow
 
 1. Normalize
 
-- Apply canonicalization rules described in [docs/design/Capabilities.md](../Capabilities.md) and [docs/design/PIPELINE_MAP.md](../PIPELINE_MAP.md).
+- Apply canonicalization rules described in [docs/design/Capabilities.md](../Capabilities.md) and [docs/design/PipelineMap.md](../PipelineMap.md).
 
 1. Enrich
 
-- Apply enrichment rules (derived attributes, correlations) as described in [docs/design/PIPELINE_MAP.md](../PIPELINE_MAP.md).
+- Apply enrichment rules (derived attributes, correlations) as described in [docs/design/PipelineMap.md](../PipelineMap.md).
 
 1. Analyze
 
@@ -47,7 +47,7 @@ This repository now uses AURORA cards as the source of truth:
 - [SQLite is the primary persistent store](../cards/requirement-sqlite-primary-storage.md)
 - [Export/import via SQLite database snapshots](../cards/requirement-export-import-sqlite-snapshots.md)
 - [Support CLI and HTTPS Server modes](../cards/requirement-dual-mode-cli-server.md)
-- [No JSON persistence](../cards/constraint-no-json-persistence.md)
+- [Rainbow table wordlist folder import](../cards/requirement-rainbow-table-folder-import.md)
 
 Developer guidance
 

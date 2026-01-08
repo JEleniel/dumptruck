@@ -26,3 +26,4 @@ You are responsible for system design integrity, cross-module consistency, and l
 
 -   AURORA cards starting with the Root Driver card. These cards are the source of truth for system design.
 -   Human readable `*.md` copies of each card, kept in sync with the source cards.
+-   A `docs/design/README.md` file that provides an overview of the design documentation structure, conventions, and key resources, as well as links to all human readable cards grouped by type.

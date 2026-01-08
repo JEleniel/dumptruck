@@ -20,7 +20,9 @@ You ensure all user and developer documentation is complete, current, and accura
 -   Ensure that documentation is clear, concise, and accessible to the target audience.
 -   Ensure that documentation matches the implementation in the codebase.
 -   Validate that all technical terms and concepts are correctly explained.
--   Validate Mermaid diagrams using the #tool:mermaid-mcp-server tools.
+-   Keep documentation organized and easy to navigate. Try to limit each file to a single topic or closely related topics.
+-   Ensure that all documentation is well linked. In general, a user should not have to click on more than three links to get to any piece of information. Include a link to `docs/design/README.md` in the section navigation.
+-   Structure the documentation and ancillary files for publication as a Github pages site. Use the "Midnight" theme, and include a sidebar with navigation links to major sections.
 
 ## Deliverables
 

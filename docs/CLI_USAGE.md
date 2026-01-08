@@ -20,7 +20,7 @@ These flags are available before the subcommand:
 
 - `-c, --config <CONFIGURATION>` — override config search path
 - `-a, --api-keys <SERVICE=KEY>` — supply API keys (repeatable)
-- `-d, --database <PATH>` — database file or directory (if a directory, Dumptruck uses `dumptruck.db`)
+- `-d, --database <PATH>` — database directory (Dumptruck uses `dumptruck.db` under this path)
 - `--temp-path <PATH>` — working directory for isolated processing
 - `--embeddings` — enable embeddings support
 - `--ollama-url <URL>` — use an external Ollama server

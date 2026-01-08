@@ -15,7 +15,6 @@ This document is a human-readable overview. The source of truth for design requi
 Deduplication must remain consistent with:
 
 - SQLite as the primary persistent store.
-- No JSON files as persistent state.
 - A stable user-facing command surface (`analyze`, `status`, `export`, `import`, `serve`).
 
 ## System sketch
@@ -90,9 +89,7 @@ Deduplication should not require storing raw sensitive values long-term.
 - [Stage-based pipeline requirement][requirement-stage-based-processing-pipeline]
 - [SQLite primary storage requirement][requirement-sqlite-primary-storage]
 - [Export/import snapshots requirement][requirement-export-import-sqlite-snapshots]
-- [No JSON persistence constraint][constraint-no-json-persistence]
 
-[constraint-no-json-persistence]: AURORA/cards/constraint-no-json-persistence.json
 [driver-dumptruck-root]: AURORA/cards/driver-dumptruck-root.json
 [requirement-export-import-sqlite-snapshots]: AURORA/cards/requirement-export-import-sqlite-snapshots.json
 [requirement-sqlite-primary-storage]: AURORA/cards/requirement-sqlite-primary-storage.json

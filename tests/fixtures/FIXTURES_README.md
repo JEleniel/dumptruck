@@ -1,6 +1,6 @@
 # Test Fixtures Matrix
 
-This directory contains comprehensive test fixtures for validating Dumptruck's data ingestion and processing pipeline across all supported formats and edge cases.
+This directory contains comprehensive test fixtures for validating Dumptruck's analysis pipeline across supported formats and edge cases.
 
 ## File Index
 
@@ -79,12 +79,12 @@ This directory contains comprehensive test fixtures for validating Dumptruck's d
 **json_credentials.json** - JSON array of objects
 
 - Use case: JSON format adapter testing
-- Expected: Equivalent processing to CSV
+- Note: The `dumptruck analyze` input parser does not currently support JSON.
 
 **yaml_credentials.yaml** - YAML format
 
 - Use case: YAML format adapter testing
-- Expected: Equivalent processing to CSV
+- Note: The `dumptruck analyze` input parser does not currently support YAML.
 
 ### Scale Testing
 
@@ -99,47 +99,40 @@ This directory contains comprehensive test fixtures for validating Dumptruck's d
 
 ```bash
 # Test well-formed data
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv
+cargo run -- analyze tests/fixtures/well_formed_credentials.csv
 
 # Test error handling with malformed data
-cargo run -- ingest tests/fixtures/missing_header.csv --format csv
-cargo run -- ingest tests/fixtures/mismatched_columns.csv --format csv
+cargo run -- analyze tests/fixtures/missing_header.csv
+cargo run -- analyze tests/fixtures/mismatched_columns.csv
 
 # Test Unicode handling
-cargo run -- ingest tests/fixtures/unicode_addresses.csv --format csv
+cargo run -- analyze tests/fixtures/unicode_addresses.csv
 
 # Test hash detection
-cargo run -- ingest tests/fixtures/hashed_credentials.csv --format csv
+cargo run -- analyze tests/fixtures/hashed_credentials.csv
 
-# Test format adapters
-cargo run -- ingest tests/fixtures/tab_separated.tsv --format tsv
-cargo run -- ingest tests/fixtures/json_credentials.json --format json
-cargo run -- ingest tests/fixtures/yaml_credentials.yaml --format yaml
+# Test TSV input
+cargo run -- analyze tests/fixtures/tab_separated.tsv
 
 # Test duplicate detection
-cargo run -- ingest tests/fixtures/duplicate_rows.csv --format csv
+cargo run -- analyze tests/fixtures/duplicate_rows.csv
 ```
 
-### Testing With CLI Flags
+### Testing With Supported CLI Flags
 
 ```bash
-# Enable embeddings enrichment
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv --embeddings
+# Enable embeddings enrichment (requires Ollama configured in config)
+cargo run -- analyze tests/fixtures/well_formed_credentials.csv --enable-embeddings
 
-# Enable HIBP enrichment
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv --hibp
-
-# Output in different formats
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv --output-format json
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv --output-format csv
-cargo run -- ingest tests/fixtures/well_formed_credentials.csv --format csv --output-format jsonl
+# Write results to a JSON file
+cargo run -- analyze tests/fixtures/well_formed_credentials.csv --output ./tmp/results.json
 ```
 
 ## Test Coverage
 
 | Aspect | Coverage | Files |
-|--------|----------|-------|
-| Format | CSV, TSV, JSON, YAML | Multiple |
+| ------ | -------- | ----- |
+| Format | CSV, TSV | Multiple |
 | Data Quality | Well-formed, Malformed | 3 files |
 | Encoding | ASCII, UTF-8 Unicode | unicode_addresses.csv |
 | Password Type | Plaintext, Hashes (MD5/SHA1/SHA256) | hashed_credentials.csv, mixed_format_data.csv |

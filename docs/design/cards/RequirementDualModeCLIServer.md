@@ -18,9 +18,13 @@ Dumptruck must support two primary runtime modes: a standalone CLI for ad-hoc an
 
 ## Sources
 
-- [docs/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
-- [docs/design/PIPELINE_MAP.md](../design/PIPELINE_MAP.md)
-- [docs/SECURITY_OPS.md](../SECURITY_OPS.md)
+- [docs/design/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- [docs/design/PipelineMap.md](../PipelineMap.md)
+- [docs/SECURITY_OPS.md](../../SECURITY_OPS.md)
+
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
 
 ## Canonical JSON
 

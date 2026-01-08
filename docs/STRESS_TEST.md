@@ -25,13 +25,13 @@ The binary will be created at `target/release/stress-test`.
 
 ```bash
 # Start the server in one terminal
-./target/debug/dumptruck server \
+./target/debug/dumptruck serve \
   --cert tests/fixtures/tls.crt \
   --key tests/fixtures/tls.key \
-  --oauth-client-id test-client \
-  --oauth-client-secret test-secret \
-  --oauth-token-endpoint https://oauth.example.com/token \
-  -vvv
+  --port 8443 \
+  --oauth-id test-client \
+  --oauth-secret test-secret \
+  --oauth-discovery-url https://oauth.example.com/.well-known/openid-configuration
 
 # In another terminal, run the stress test
 ./target/release/stress-test
@@ -163,9 +163,7 @@ On a modern multi-core system, typical results with default settings:
 
 3. **Monitor Server**: Watch server logs to ensure workers are processing
 
-   ```bash
-   ./dumptruck server ... -vvv  # Verbose output
-   ```
+	Example: `./dumptruck serve ...`
 
 4. **Check System Resources**:
    + Monitor CPU: `top`, `htop`
@@ -201,7 +199,7 @@ Use the stress test in your CI/CD pipeline:
 cargo build --bin stress-test --release
 
 # Start server in background
-./target/release/dumptruck server ... &
+./target/release/dumptruck serve ... &
 SERVER_PID=$!
 
 # Give server time to start
@@ -228,12 +226,13 @@ Test server performance with a small credential dataset:
 
 ```bash
 # Terminal 1: Start server
-./target/debug/dumptruck server \
+./target/debug/dumptruck serve \
   --cert tests/fixtures/tls.crt \
   --key tests/fixtures/tls.key \
-  --oauth-client-id test-client \
-  --oauth-client-secret test-secret \
-  --oauth-token-endpoint https://oauth.example.com/token
+  --port 8443 \
+  --oauth-id test-client \
+  --oauth-secret test-secret \
+  --oauth-discovery-url https://oauth.example.com/.well-known/openid-configuration
 
 # Terminal 2: Run stress test with 5 concurrent requests
 STRESS_TEST_CONCURRENT=5 STRESS_TEST_REQUESTS=50 ./target/release/stress-test
@@ -366,7 +365,7 @@ Compare latency and throughput metrics to identify optimal concurrency levels.
 ### Test Fixture Reference
 
 | Fixture | Format | Content | Use Case |
-|---------|--------|---------|----------|
+| ------- | ------ | ------- | -------- |
 | `test_creds_small.csv` | CSV | 10 email/password pairs | Quick smoke tests |
 | `test_creds_100.csv` | CSV | 100 credential entries | Standard load testing |
 | `test_creds_mixed.csv` | CSV | Mixed username/email formats | Format diversity testing |
@@ -387,8 +386,8 @@ Compare latency and throughput metrics to identify optimal concurrency levels.
 Request failed: error trying to connect
 ```
 
-- Ensure server is running: `./dumptruck server ...`
-- Check server port: default is `8443`
+- Ensure server is running: `./dumptruck serve ...`
+- Check server port: default is `443` (examples use `8443`)
 - Check firewall: `sudo ufw allow 8443/tcp`
 
 ### TLS Certificate Error

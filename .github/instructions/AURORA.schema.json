@@ -1,0 +1,125 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://dumptruck.dev/schema/aurora/card.schema.json",
+	"title": "AURORA Card Schema",
+	"description": "JSON schema for AURORA architectural model cards",
+	"version": "1.1.0",
+	"type": "object",
+	"required": ["uuid", "id", "card_type", "name", "description", "version", "audit_history"],
+	"additionalProperties": false,
+	"properties": {
+		"uuid": {
+			"type": "string",
+			"description": "UUID v4 or v7 that never changes for the life of the card",
+			"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+		},
+		"id": {
+			"type": "string",
+			"description": "A short name for the card in snake_case",
+			"pattern": "^[a-z0-9_]+$"
+		},
+		"card_type": {
+			"type": "string",
+			"description": "The architectural type represented by the card",
+			"enum": [
+				"mission",
+				"driver",
+				"requirement",
+				"capability",
+				"feature",
+				"constraint",
+				"actor",
+				"action",
+				"condition",
+				"event",
+				"process",
+				"state",
+				"system",
+				"application",
+				"component",
+				"interface",
+				"test",
+				"artifact",
+				"datastore",
+				"node",
+				"boundary"
+			]
+		},
+		"card_subtype": {
+			"type": "string",
+			"description": "An optional refinement of the card_type (e.g., 'domain' for a boundary card)",
+			"pattern": "^[A-Za-z0-9_-]+$"
+		},
+		"name": {
+			"type": "string",
+			"description": "A concise human-readable name for the card",
+			"minLength": 1
+		},
+		"description": {
+			"type": "string",
+			"description": "Details regarding the element the card represents",
+			"minLength": 1
+		},
+		"version": {
+			"type": "string",
+			"description": "Semantic version of the card (major.minor.revision)",
+			"pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+		},
+		"status": {
+			"type": "string",
+			"description": "The status of an implementable element",
+			"enum": ["proposed", "pending", "implementation", "review", "verified", "deprecated", "retired"]
+		},
+		"attributes": {
+			"type": "object",
+			"description": "Key-value pairs providing additional data for tooling and agents",
+			"additionalProperties": true
+		},
+		"links": {
+			"type": "array",
+			"description": "Relationships between cards, always directed away from mission",
+			"items": {
+				"type": "object",
+				"required": ["relationship", "target"],
+				"additionalProperties": false,
+				"properties": {
+					"relationship": {
+						"type": "string",
+						"description": "A single-word description of the relationship (view-dependent)",
+						"minLength": 1
+					},
+					"target": {
+						"type": "string",
+						"description": "The UUID of the destination card",
+						"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+					}
+				}
+			}
+		},
+		"audit_history": {
+			"type": "array",
+			"description": "A record of events (created, edited, deleted) the card has been through",
+			"items": {
+				"type": "object",
+				"required": ["event", "user", "timestamp"],
+				"additionalProperties": false,
+				"properties": {
+					"event": {
+						"type": "string",
+						"description": "The type of change made to the card",
+						"enum": ["created", "edited", "deleted"]
+					},
+					"user": {
+						"type": "string",
+						"description": "The user ID who made the change"
+					},
+					"timestamp": {
+						"type": "string",
+						"description": "ISO 8601 UTC timestamp of the change",
+						"format": "date-time"
+					}
+				}
+			}
+		}
+	}
+}

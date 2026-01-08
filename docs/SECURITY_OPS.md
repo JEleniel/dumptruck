@@ -207,8 +207,8 @@ chmod 644 coc.public.key
 ### Create a Chain of Custody Record
 
 ```bash
-# Automatically created on each ingest:
-dumptruck ingest data.csv --operator "analyst@security.company.com"
+# Automatically created on each analyze run:
+dumptruck analyze data.csv --operator "analyst@security.company.com"
 
 # System generates CoC entry:
 # {
@@ -216,7 +216,7 @@ dumptruck ingest data.csv --operator "analyst@security.company.com"
 #   "file_id": "550e8400-e29b-41d4-a716-446655440000",
 #   "operator": "analyst@security.company.com",
 #   "timestamp": "2025-12-16T14:30:05Z",
-#   "action": "ingest",
+#   "action": "analyze",
 #   "file_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 #   "record_count": 1000,
 #   "signature": "abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yz...",
@@ -246,7 +246,7 @@ dumptruck coc verify COC_ENTRY_ID
 
 **For regulatory audits:**
 
-1. Operator ingests file with identity: `dumptruck ingest breach.csv --operator "jane@company.com"`
+1. Operator analyzes file with identity: `dumptruck analyze breach.csv --operator "jane@company.com"`
 2. System generates signed CoC entry
 3. During audit, retrieve all CoC entries: `dumptruck coc list --operator "jane@company.com"`
 4. Verify signatures: `dumptruck coc verify-batch --date-range "2025-01-01 to 2025-12-31"`
@@ -356,8 +356,6 @@ dumptruck secure-deletion audit --date "2025-12-16"
 - **GDPR**: Supports "right to erasure" by removing all trace of data
 - **PCI-DSS**: Requirement 3.2.4 explicitly requires secure deletion method (NIST compliant)
 - **SOC 2**: Demonstrates commitment to data protection and disposal
-
-````
 
 **Monitoring Certificate Expiry:**
 

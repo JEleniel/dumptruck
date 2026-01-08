@@ -9,23 +9,44 @@ Dumptruck uses the AURORA card/link model as the canonical design source of trut
 - Canonical cards (JSON): [AURORA/cards/][aurora-cards]
 - Canonical links (JSON): [AURORA/links/][aurora-links]
 - Human-readable cards (Markdown): [cards/][design-cards]
-- Human-readable links (Markdown): [links/][design-links]
 
 Conventions:
 
 - Canonical JSON lives only under [AURORA/][aurora-root].
-- Human-readable card/link Markdown files must not embed JSON and must link to the canonical JSON.
+- Human-readable card Markdown files must not embed JSON and must link to the canonical JSON card.
+- Human-readable card Markdown files include navigational links to related cards (instead of separate per-link Markdown files).
 
 Root driver:
 
 - Card (Markdown): [cards/driver-dumptruck-root.md][driver-root-md]
 - Card (JSON): [AURORA/cards/driver-dumptruck-root.json][driver-root-json]
 
+## Card index
+
+Driver:
+
+- [driver:dumptruck-root][driver-root-md]
+
+Actors:
+
+- [cards/actor-analyst.md](cards/actor-analyst.md)
+- [cards/actor-operator.md](cards/actor-operator.md)
+- [cards/actor-maintainers.md](cards/actor-maintainers.md)
+
+Requirements:
+
+- [cards/requirement-command-surface.md](cards/requirement-command-surface.md)
+- [cards/requirement-stage-based-processing-pipeline.md](cards/requirement-stage-based-processing-pipeline.md)
+- [cards/requirement-sqlite-primary-storage.md](cards/requirement-sqlite-primary-storage.md)
+- [cards/requirement-export-import-sqlite-snapshots.md](cards/requirement-export-import-sqlite-snapshots.md)
+- [cards/requirement-dual-mode-cli-server.md](cards/requirement-dual-mode-cli-server.md)
+- [cards/requirement-rainbow-table-folder-import.md](cards/requirement-rainbow-table-folder-import.md)
+
 ## Core design docs
 
 - Capabilities: [Capabilities.md][capabilities]
-- Pipeline map: [PIPELINE_MAP.md][pipeline-map]
-- Deduplication design: [DEDUP_ARCHITECTURE.md][dedup-architecture]
+- Pipeline map: [PipelineMap.md][pipeline-map]
+- Deduplication design: [DedupArchitecture.md][dedup-architecture]
 
 ## Architecture docs
 
@@ -40,7 +61,7 @@ Root driver:
 ## Naming and persistence rules
 
 - User-facing commands are: analyze, status, export, import, serve.
-- Persistent state is SQLite-only. JSON is used only for report outputs and API payloads.
+- SQLite is the primary persistent store. JSON may be used for interchange artifacts such as report outputs, API payloads, or optional exports.
 - Server API paths may use `/api/v1/ingest` for backwards compatibility, but semantically they submit analysis jobs.
 
 [architecture]: architecture/ARCHITECTURE.md
@@ -50,13 +71,12 @@ Root driver:
 [capabilities]: Capabilities.md
 [components]: architecture/COMPONENTS.md
 [data-flow]: architecture/DATA_FLOW_AND_EXTENSIBILITY.md
-[dedup-architecture]: DEDUP_ARCHITECTURE.md
+[dedup-architecture]: DedupArchitecture.md
 [deployment]: architecture/DEPLOYMENT.md
 [design-cards]: cards/
-[design-links]: links/
 [diagrams]: architecture/diagrams/
 [driver-root-json]: AURORA/cards/driver-dumptruck-root.json
 [driver-root-md]: cards/driver-dumptruck-root.md
 [interfaces]: architecture/INTERFACES.md
-[pipeline-map]: PIPELINE_MAP.md
+[pipeline-map]: PipelineMap.md
 [security]: architecture/SECURITY.md

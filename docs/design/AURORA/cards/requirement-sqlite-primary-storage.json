@@ -5,6 +5,12 @@
 			"event": "created",
 			"event_time": "2026-01-07T00:00:00Z",
 			"note": "Corrected pre-AURORA docs that referenced non-SQLite storage and JSON file persistence."
+		},
+		{
+			"by": "agent:architect",
+			"event": "updated",
+			"event_time": "2026-01-08T00:00:00Z",
+			"note": "Removed the no-JSON persistence proscription; SQLite remains the authoritative store but JSON may be used for interchange artifacts."
 		}
 	],
 	"attributes": {
@@ -12,8 +18,8 @@
 		"database_file": "dumptruck.db",
 		"persistence": "single-file"
 	},
-	"constraints": ["constraint:no-json-persistence"],
-	"description": "All operational data for Dumptruck (history, dedup indicators, analysis artifacts, metadata) is persisted in a single SQLite database file. The system does not rely on JSON files for persistent state.",
+	"constraints": [],
+	"description": "All operational data for Dumptruck (history, dedup indicators, analysis artifacts, metadata) is persisted in a single SQLite database file. SQLite is the authoritative persistent store; JSON may be used for interchange artifacts such as report outputs, API payloads, or optional exports.",
 	"id": "requirement:sqlite-primary-storage",
 	"links": [],
 	"name": "SQLite is the primary persistent store",
@@ -24,5 +30,5 @@
 	"relations": [],
 	"status": "approved",
 	"type": "requirement",
-	"version": "1.0.0"
+	"version": "1.0.1"
 }

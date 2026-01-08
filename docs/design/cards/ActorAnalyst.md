@@ -21,6 +21,10 @@ An analyst runs Dumptruck locally to analyze dumps and generate reports, optiona
 - Primary interactions: CLI
 - Typical tasks: analyze, export, import
 
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
+
 ## Canonical JSON
 
 Source of truth: [docs/design/AURORA/cards/actor-analyst.json](../AURORA/cards/actor-analyst.json)

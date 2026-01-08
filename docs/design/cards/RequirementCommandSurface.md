@@ -26,6 +26,10 @@ Dumptruck must expose a stable command surface consisting of:
 
 - [src/cli.rs](../../../src/cli.rs)
 
+## Navigation
+
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
+
 ## Canonical JSON
 
 Source of truth: [docs/design/AURORA/cards/requirement-command-surface.json](../AURORA/cards/requirement-command-surface.json)

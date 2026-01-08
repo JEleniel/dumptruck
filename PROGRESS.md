@@ -37,15 +37,15 @@ Dumptruck exists to securely analyze bulk data dumps (breach/leak datasets) in a
     + [AURORA Feature Card](docs/design/AURORA/cards/requirement-export-import-sqlite-snapshots.json)
     + [AURORA Feature Card (Human)](docs/design/cards/requirement-export-import-sqlite-snapshots.md)
 
-- **AURORA: No JSON persistence constraint**
-    + Status: Completed
-    + [AURORA Constraint Card](docs/design/AURORA/cards/constraint-no-json-persistence.json)
-    + [AURORA Constraint Card (Human)](docs/design/cards/constraint-no-json-persistence.md)
-
 - **AURORA: Dual-mode CLI and HTTPS server**
     + Status: Completed
     + [AURORA Feature Card](docs/design/AURORA/cards/requirement-dual-mode-cli-server.json)
     + [AURORA Feature Card (Human)](docs/design/cards/requirement-dual-mode-cli-server.md)
+
+- **AURORA: Rainbow table folder import**
+    + Status: Pending
+    + [AURORA Feature Card](docs/design/AURORA/cards/requirement-rainbow-table-folder-import.json)
+    + [AURORA Feature Card (Human)](docs/design/cards/requirement-rainbow-table-folder-import.md)
 
 - **Design: Architecture overview docs**
     + Status: Completed
@@ -60,19 +60,23 @@ Dumptruck exists to securely analyze bulk data dumps (breach/leak datasets) in a
 
 ## Active Context Summary
 
-- docs/design is being normalized to be AURORA-first: canonical JSON cards and links under docs/design/AURORA, with Markdown “view” files under docs/design/cards and docs/design/links.
-- Persistence is SQLite-only by design; export/import is via SQLite snapshots.
+- docs/design is being normalized to be AURORA-first: canonical JSON cards and links under docs/design/AURORA, with Markdown “view” files under docs/design/cards.
+- AURORA agent instructions and their JSON schema are being tightened to treat the embedded diagram as the source of truth for allowed `card_type` values (snake_case), including `behavior` → `action` and treating `calls` as a link relationship (not a card type).
+- Persistence is SQLite-primary by design; export/import is via SQLite snapshots.
 - User-facing terminology is “analyze”; the HTTP API keeps /api/v1/ingest paths for backwards compatibility only.
 - The legacy “seed” concept is removed from design documentation and replaced by export/import semantics.
 - AURORA model validity is now machine-validated (standalone validator crate).
+- Next session: finish refining the AURORA instructions, then apply them to the project architecture model (cards + links).
 - CLI user docs are being brought into alignment with the stable command surface (analyze/status/export/import/serve) and SQLite-only persistence.
+- Recent doc alignment: README, key operational docs, fixture READMEs, and HIBP/enrichment docs now use `analyze`/`serve` (CLI) while preserving `/api/v1/ingest` as a backwards-compatible HTTP path.
+- Known doc gaps: some design-level documents still include legacy PostgreSQL/pgvector examples and should be reconciled or clearly labeled as conceptual.
 
 ## Patterns
 
 - AURORA architecture model:
     + Canonical source of truth: [docs/design/AURORA/cards](docs/design/AURORA/cards) and [docs/design/AURORA/links](docs/design/AURORA/links).
-    + All links point toward the root driver card, forming a DAG.
-    + Markdown copies link to canonical JSON and do not embed JSON.
+    + All links point away from the root driver card, forming a directed graph. Local cycles are allowed for bounded subgraphs such as state machines.
+    + Card Markdown includes navigational links (separate per-link Markdown files are not used).
 
 - Pipeline decomposition:
     + Stage-based processing with explicit safety steps (safe read/validation, chain of custody, secure deletion) and reporting.
@@ -93,20 +97,21 @@ Dumptruck exists to securely analyze bulk data dumps (breach/leak datasets) in a
 
 1. Documentation and architecture model normalization
     + Status: In Progress
-    + Goal: Keep docs/design consistent with AURORA-first modeling, SQLite-only persistence, and analyze terminology.
+    + Goal: Keep docs/design consistent with AURORA-first modeling, SQLite-primary persistence, and analyze terminology.
 
 2. AURORA model validation and hygiene
     + Status: Completed
     + Goal: Add lightweight validation to ensure:
-        * Every non-root card links (directly or indirectly) to the root driver.
-        * No cycles.
-        * All link source and target IDs exist.
+        * Every non-root card is reachable (directly or indirectly) from the root driver.
+        * No links point towards the root driver.
+        * Any cycles are bounded (for example: state-machine subgraphs).
+        * All link `links[].target` UUIDs exist.
     + Implementation: `cargo run -p aurora-validator`
 
 3. User-facing terminology consistency
     + Status: In Progress
     + Goal: Ensure CLI and docs use “analyze” consistently while preserving backwards-compatible API paths.
-    + Current: Updated docs/CLI_USAGE.md and docs/EXAMPLES.md to remove legacy “ingest” examples and reflect the stable command surface.
+    + Current: Updated README.md, core user docs, fixture READMEs, and enrichment/HIBP docs to remove legacy “ingest/server” CLI usage and reflect the stable command surface (analyze/status/export/import/serve).
 
 4. Seed deprecation follow-through
     + Status: In Progress

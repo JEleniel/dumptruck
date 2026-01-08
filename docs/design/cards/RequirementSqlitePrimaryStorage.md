@@ -14,16 +14,16 @@ approved
 
 ## Description
 
-All operational data for Dumptruck (history, dedup indicators, analysis artifacts, metadata) is persisted in a single SQLite database file. The system does not rely on JSON files for persistent state.
+All operational data for Dumptruck (history, dedup indicators, analysis artifacts, metadata) is persisted in a single SQLite database file. SQLite is the authoritative persistent store; JSON may be used for interchange artifacts such as report outputs, API payloads, or optional exports.
 
 ## Sources
 
 - [src/database.rs](../../../src/database.rs)
 - [src/database](../../../src/database)
 
-## Constraints
+## Navigation
 
-- constraint:no-json-persistence
+- Root driver: [driver:dumptruck-root](driver-dumptruck-root.md)
 
 ## Canonical JSON
 

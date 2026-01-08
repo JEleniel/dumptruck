@@ -51,13 +51,13 @@
 
 ```bash
 # Terminal 1: Start server
-./target/debug/dumptruck server \
+./target/debug/dumptruck serve \
   --cert certs/server.crt \
   --key certs/server.key \
-  --oauth-client-id test \
-  --oauth-client-secret test \
-  --oauth-token-endpoint https://auth.example.com/token \
-  -vvv
+    --port 8443 \
+    --oauth-id test \
+    --oauth-secret test \
+    --oauth-discovery-url https://auth.example.com/.well-known/openid-configuration
 
 # Terminal 2: Run stress test
 ./target/debug/stress-test

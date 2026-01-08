@@ -1,129 +1,71 @@
-# Configuration Management
+# Configuration
 
-Dumptruck uses a JSON configuration file to manage API keys and email domain substitution rules.
+Dumptruck loads configuration from JSON files and applies CLI overrides at runtime.
 
-## Configuration File Location
+## Configuration file search
 
-By default, Dumptruck looks for configuration at:
+If `--config <CONFIGURATION>` is provided, Dumptruck loads only that file.
 
-- `config.json` in the current working directory
-- Or specify a custom path via the `DUMPTRUCK_CONFIG` environment variable
+Otherwise, Dumptruck searches (in order):
 
-A default configuration template is provided in `config.default.json`.
+- `./config.json`
+- `/etc/dumptruck/config.json`
+- A user config path (e.g., `~/.config/dumptruck/config.json` on Linux)
 
-## Configuration Structure
+## Schema and template
 
-### API Keys
+The authoritative schema is [config.schema.json](../config.schema.json). A starting template is provided in [config.default.json](../config.default.json).
 
-The `api_keys` section contains credentials for external services:
+## Common settings
 
-```json
-{
-  "api_keys": {
-    "hibp": "your-hibp-api-key-here"
-  }
-}
-```
+### API keys
 
-#### HIBP API Key
-
-The `hibp` key is used for Have I Been Pwned API v3 requests. Obtain a key at [haveibeenpwned.com](https://haveibeenpwned.com).
-
-**Environment Override:**
-Set `DUMPTRUCK_HIBP_API_KEY` to override the configuration file value:
-
-```bash
-export DUMPTRUCK_HIBP_API_KEY="your-api-key"
-```
-
-### Email Suffix Substitutions
-
-Email domains that have changed over time or have common aliases can be configured to map to a canonical form. The key is the canonical suffix, and the value is an array of alternate suffixes.
-
-#### Example
+`api_keys` is a list of service keys. For example:
 
 ```json
 {
-  "email_suffix_substitutions": {
-    "bankofamerica.com": ["bofa.com"],
-    "gmail.com": ["googlemail.com"],
-    "yahoo.com": ["ymail.com", "rocketmail.com"],
-    "microsoft.com": ["outlook.com", "hotmail.com", "live.com"],
-    "amazon.com": ["aws.amazon.com"]
-  }
+  "api_keys": [
+    {
+      "name": "haveibeenpwned",
+      "api_key": "YOUR_KEY_HERE"
+    }
+  ]
 }
 ```
 
-#### How It Works
-
-During email normalization, if an email uses an alternate domain, it is automatically converted to use the canonical domain:
-
-- Input: `user@googlemail.com`
-- Canonical: `user@gmail.com` (mapped via config)
-
-This ensures that multiple email addresses referring to the same account (with different domain names) are recognized as duplicates during deduplication.
-
-## Configuration Merging
-
-Configuration values are loaded in priority order (highest priority first):
-
-1. **Command-line arguments** (for CLI mode only) – highest priority
-2. **Environment variables** (e.g., `DUMPTRUCK_HIBP_API_KEY`)
-3. **Configuration file** (`config.json` or custom path via `DUMPTRUCK_CONFIG`)
-4. **Default values** – lowest priority
-
-This means:
-
-- CLI arguments override everything else
-- Environment variables override file-based configuration
-- Configuration file values override defaults
-- Defaults are used only when no other source provides a value
-
-Example precedence resolution:
+You can also supply API keys via CLI (repeatable):
 
 ```bash
-# Example 1: Using all sources
-export DUMPTRUCK_HIBP_API_KEY="env-key"           # From environment
-dumptruck --config config.json ingest data.csv    # From file: config.json
-
-# Result: Environment variable takes precedence → uses "env-key"
-
-# Example 2: CLI overrides environment
-export DUMPTRUCK_HIBP_API_KEY="env-key"
-dumptruck --hibp-key "cli-key" ingest data.csv
-
-# Result: CLI argument takes precedence → uses "cli-key"
+dumptruck --api-keys haveibeenpwned=YOUR_KEY_HERE analyze ./breach.csv
 ```
 
-## Code Usage
+### Email suffix substitutions
 
-Load configuration in your Rust code:
+`email_suffix_substitutions` describes domain aliasing rules used during normalization.
 
-```rust
-use dumptruck::config::Config;
-
-// Load from default location
-let config = Config::from_file("config.json")?;
-
-// Load with environment variable overrides
-let config = Config::from_file_with_env("config.json")?;
-
-// Access values
-let hibp_key = config.hibp_api_key();
-let gmail_alternates = config.get_suffix_alternates("gmail.com");
-
-// Check if suffix has rules
-if config.has_suffix_alternates("example.com") {
-    // Handle alternates
+```json
+{
+  "email_suffix_substitutions": [
+    {
+      "original": "gmail.com",
+      "substitutes": ["googlemail.com"]
+    }
+  ]
 }
 ```
 
-## Default Configuration
+### Paths
 
-A default configuration is provided in `config.default.json`. For production use, create a `config.json` file with your actual API keys and domain rules.
+`paths` configures filesystem locations used by Dumptruck.
 
-## Security Notes
+- `temp_path`: working directory for isolated processing
+- `db_path`: base location for the SQLite database (Dumptruck creates `dumptruck.db` under this path)
 
-- Never commit `config.json` with real API keys to version control
-- Use environment variables for sensitive credentials in CI/CD environments
-- The default test API key (`00000000000000000000000000000000`) should only be used for development
+## Override order
+
+Configuration is loaded from files first, then CLI overrides are applied (CLI wins).
+
+## Security notes
+
+- Do not commit real API keys to version control.
+- Prefer OS-level secrets management for production deployments.

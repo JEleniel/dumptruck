@@ -177,7 +177,7 @@ async fn enrich_address(
 
 ### HIBP API v3 Endpoints
 
-**GET /breachedaccount/{email}**
+#### GET /breachedaccount/{email}
 
 - Query breaches for an email address
 - Parameters: email (URL-encoded), includeUnverified (true/false)
@@ -191,7 +191,7 @@ async fn enrich_address(
 ### Rate Limits
 
 | Configuration | Limit |
-|---|---|
+| --- | --- |
 | Without API key | 1 request/second |
 | With API key | 10+ requests/second |
 
@@ -199,7 +199,7 @@ async fn enrich_address(
 
 HIBP API requires a User-Agent header identifying your application:
 
-```
+```text
 Dumptruck/1.0 (Cyber Threat Identification)
 ```
 
@@ -207,14 +207,13 @@ Dumptruck/1.0 (Cyber Threat Identification)
 
 Optional but recommended for higher rate limits:
 
-- Get key: <https://haveibeenpwned.com/API/Key>
+- Get key: [HIBP API key](https://haveibeenpwned.com/API/Key)
 - Pass via header: `hibp-api-key: your-key-here`
-- Set via environment: `DUMPTRUCK_HIBP_API_KEY=your-key-here`
 
 ## Performance Characteristics
 
 | Operation | Latency | Notes |
-|---|---|---|
+| --- | --- | --- |
 | API Request | 200-500ms | First request includes connection overhead |
 | Breach Storage | 1-5ms | Single INSERT with ON CONFLICT |
 | Breach Lookup | <1ms | Index lookup on canonical_hash |
@@ -234,22 +233,16 @@ Optional but recommended for higher rate limits:
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-# HIBP API key (optional)
-export DUMPTRUCK_HIBP_API_KEY="your-api-key-here"
-
-# PostgreSQL
-export DUMPTRUCK_PG_CONN="postgresql://dumptruck:dumpturck@dumptruck-db/dumptruck"
-```
+This module accepts an optional API key string at construction time.
 
 ### Client Initialization
 
 ```rust
-// With API key from environment
-let api_key = std::env::var("DUMPTRUCK_HIBP_API_KEY").ok();
-let hibp = HibpClient::new_default(api_key);
+// Without API key
+let hibp = HibpClient::new_default(None);
+
+// With API key
+let hibp = HibpClient::new_default(Some("api-key-123".to_string()));
 
 // Custom configuration
 let hibp = HibpClient::new(
@@ -263,7 +256,7 @@ let hibp = HibpClient::new(
 ### HTTP Status Codes
 
 | Status | Meaning | Handling |
-|---|---|---|
+| --- | --- | --- |
 | 200 | Breaches found | Process breach array |
 | 404 | Not in breach | Return empty list |
 | 400 | Invalid email | Log and skip |
