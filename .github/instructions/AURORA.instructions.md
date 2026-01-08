@@ -5,7 +5,7 @@ applyTo: '**/*'
 
 ## Model Overview
 
-**Version**: 1.1.0
+**Version**: 2.0.0
 **Ontology**: Element-centric, link-relationship model
 
 AURORA is a deterministic, JSON-based architectural model where architectural elements are Cards, Links represent the relationships between Cards, and the model forms a Directed Graph away from the `mission`. The model is designed for direct machine consumption by LLMs, agents, reasoners, and automated tools, as well as human readability.
