@@ -1,4 +1,4 @@
-use std::os::linux::process;
+use tracing::error;
 
 #[tokio::main]
 async fn main() {
@@ -7,6 +7,6 @@ async fn main() {
 			"An unrecoverable error has occurred and the application will exit: {}",
 			e
 		);
-		process::exit(1);
+		std::process::exit(1);
 	}
 }

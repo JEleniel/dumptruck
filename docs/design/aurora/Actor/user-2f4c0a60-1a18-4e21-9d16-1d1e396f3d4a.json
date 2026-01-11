@@ -1,0 +1,54 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "2f4c0a60-1a18-4e21-9d16-1d1e396f3d4a",
+	"id": "user",
+	"card_type": "actor",
+	"name": "User",
+	"description": "A human operator (e.g., security analyst) who runs Dumptruck to ingest, normalize, analyze, and report on breach and threat-intelligence datasets.",
+	"version": "1.1.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "desires",
+			"target": "a5e1f8c8-7d58-4f59-8b3d-3a1b6b8d6c2f"
+		},
+		{
+			"relationship": "desires",
+			"target": "2f4f1f0d-6d6b-45d7-a1d7-0b8c4c9b5a17"
+		},
+		{
+			"relationship": "desires",
+			"target": "8d4e6c8c-4e8d-4d79-bd0c-91f6b8e5c2d3"
+		},
+		{
+			"relationship": "desires",
+			"target": "6a3d2c9b-7f0e-4a4d-9e4b-1c2d3e4f5a6b"
+		},
+		{
+			"relationship": "desires",
+			"target": "3b2a1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d"
+		},
+		{
+			"relationship": "desires",
+			"target": "4c5d6e7f-8a9b-4c0d-8e1f-2a3b4c5d6e7f"
+		},
+		{
+			"relationship": "desires",
+			"target": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:02:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:30Z"
+		}
+	]
+}

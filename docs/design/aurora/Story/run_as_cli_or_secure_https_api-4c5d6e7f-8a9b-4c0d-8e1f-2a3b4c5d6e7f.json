@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "4c5d6e7f-8a9b-4c0d-8e1f-2a3b4c5d6e7f",
+	"id": "run_as_cli_or_secure_https_api",
+	"card_type": "story",
+	"name": "Run as CLI or secure HTTPS API",
+	"description": "A User operates Dumptruck locally as a CLI, or deploys it as an HTTPS API for remote use. The API uses TLS 1.3+ transport and OAuth 2.0 authentication and returns either human-readable or JSON outputs.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "explains",
+			"target": "7b6b8d4b-1c6f-4c0e-9c08-5c6a1f5a8b2f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:00Z"
+		}
+	]
+}

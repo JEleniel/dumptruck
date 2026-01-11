@@ -1,0 +1,18 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "da524b38-aee3-4aa1-8c99-48931e47f59b",
+	"id": "operationalize_tip",
+	"card_type": "driver",
+	"name": "Operationalize the Threat Intelligence Platform (TIP)",
+	"description": "Achieve full operationalization of the Threat Intelligence Platform (TIP) by establishing or modifying process inventory, automating data enrichment and correlation, and enforcing standardized data models to maximize actionable intelligence and minimize noise.",
+	"version": "1.0.0",
+	"attributes": {},
+	"links": [],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:23:50Z"
+		}
+	]
+}

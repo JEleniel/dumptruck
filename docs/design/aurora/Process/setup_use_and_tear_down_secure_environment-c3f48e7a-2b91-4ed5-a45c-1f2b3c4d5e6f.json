@@ -1,0 +1,23 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "c3f48e7a-2b91-4ed5-a45c-1f2b3c4d5e6f",
+	"id": "setup_use_and_tear_down_secure_environment",
+	"card_type": "process",
+	"name": "Setup, Use, and Tear Down Secure Environment",
+	"description": "A repeatable operational workflow: prepare an isolated execution environment for Dumptruck, run ingestion and analysis, then securely tear down the environment and remove residual artifacts.",
+	"version": "1.0.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "involves",
+			"target": "2f4c0a60-1a18-4e21-9d16-1d1e396f3d4a"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:36:00Z"
+		}
+	]
+}

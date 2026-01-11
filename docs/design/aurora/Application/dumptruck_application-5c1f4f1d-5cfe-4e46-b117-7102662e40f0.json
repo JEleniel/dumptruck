@@ -1,0 +1,70 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "5c1f4f1d-5cfe-4e46-b117-7102662e40f0",
+	"id": "dumptruck_application",
+	"card_type": "application",
+	"name": "Dumptruck",
+	"description": "A security-first implementation of the breach data analysis tool. Dumptruck safely processes, normalizes, and analyzes large data dumps with surgical precision. Designed for security teams analyzing credential leaks, breach datasets, and threat intelligence at scale—processing gigabytes of data in memory-efficient streaming pipelines while storing historical records only as non-reversible hashes.",
+	"version": "1.3.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "comprises",
+			"target": "1e7b3c2d-0f1a-4b6d-9c7e-2a1b3c4d5e6f"
+		},
+		{
+			"relationship": "comprises",
+			"target": "12c1aa8e-b0b1-4db5-a3e0-1b6e8b8704f5"
+		},
+		{
+			"relationship": "comprises",
+			"target": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e"
+		},
+		{
+			"relationship": "comprises",
+			"target": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f"
+		},
+		{
+			"relationship": "comprises",
+			"target": "4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a"
+		},
+		{
+			"relationship": "comprises",
+			"target": "5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b"
+		},
+		{
+			"relationship": "comprises",
+			"target": "6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c"
+		},
+		{
+			"relationship": "comprises",
+			"target": "7a8b9c0d-1e2f-4a3b-4c5d-6e7f8a9b0c1d"
+		},
+		{
+			"relationship": "comprises",
+			"target": "9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:50:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:08:30Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:12:30Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:16:30Z"
+		}
+	]
+}

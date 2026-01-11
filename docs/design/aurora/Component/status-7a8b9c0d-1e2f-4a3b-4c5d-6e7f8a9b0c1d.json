@@ -1,0 +1,30 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "7a8b9c0d-1e2f-4a3b-4c5d-6e7f8a9b0c1d",
+	"id": "status",
+	"card_type": "component",
+	"name": "status",
+	"description": "Status reporting and operational introspection for CLI and server modes.",
+	"version": "1.1.0",
+	"attributes": {
+		"rust_module": "src/status"
+	},
+	"links": [
+		{
+			"relationship": "implements",
+			"target": "7b6b8d4b-1c6f-4c0e-9c08-5c6a1f5a8b2f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:08:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:14:40Z"
+		}
+	]
+}

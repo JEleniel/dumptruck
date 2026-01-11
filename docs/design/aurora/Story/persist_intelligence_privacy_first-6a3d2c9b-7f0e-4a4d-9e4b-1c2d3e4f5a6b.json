@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "6a3d2c9b-7f0e-4a4d-9e4b-1c2d3e4f5a6b",
+	"id": "persist_intelligence_privacy_first",
+	"card_type": "story",
+	"name": "Persist intelligence without storing raw data",
+	"description": "A User wants the system to remember what it has seen across runs without retaining raw sensitive data. The system stores historical intelligence as non-reversible HMAC hashes and supports secure deletion of working files with clearly documented limits.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "explains",
+			"target": "0e6b2c44-6b2c-4b1b-9e34-9e52a5c3f6a4"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:00Z"
+		}
+	]
+}

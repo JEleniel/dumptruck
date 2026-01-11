@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "6e6e5d5a-2f0b-4b2a-9e9a-0c2c4fb1d46b",
+	"id": "normalization_and_deduplication_engine",
+	"card_type": "feature",
+	"name": "Normalization and deduplication engine",
+	"description": "Normalize messy, real-world fields for consistent comparison and reuse: Unicode canonicalization (NFKC), case-folding, punctuation rules, and smart email canonicalization (plus-address stripping and configurable domain alias substitution) with deduplication support.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "satisfies",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:58:00Z"
+		}
+	]
+}

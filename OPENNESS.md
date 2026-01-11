@@ -50,7 +50,7 @@ All code is visible and reviewable:
 Our development is transparent and trackable:
 
 - **Issue Tracking**: All work tracked in GitHub Issues with clear acceptance criteria
-- **Progress Tracking**: [PROGRESS.md](PROGRESS.md) maintained with current implementation status
+- **Progress Tracking**: AGENT_PROGRESS.md]AGENT_PROGRESS.md) maintained with current implementation status
 - **Commit Linking**: All commits linked to issues via conventional commits (`Fixes #123`)
 - **Work in Public**: Feature branches and PRs are visible; we don't work in private forks
 - **Roadmap**: Planned work documented in feature cards and issues

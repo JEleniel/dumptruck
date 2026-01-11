@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a",
+	"id": "data_protection",
+	"card_type": "constraint",
+	"name": "Data Protection",
+	"description": "All data ingested from analysis must be stored as either a hash or encrypted.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "limits",
+			"target": "0e6b2c44-6b2c-4b1b-9e34-9e52a5c3f6a4"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:22:00Z"
+		}
+	]
+}

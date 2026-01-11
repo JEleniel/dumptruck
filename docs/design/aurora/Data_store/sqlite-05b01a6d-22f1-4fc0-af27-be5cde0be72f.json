@@ -1,0 +1,20 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "05b01a6d-22f1-4fc0-af27-be5cde0be72f",
+	"id": "sqlite",
+	"card_type": "data_store",
+	"name": "SQLite",
+	"description": "Local SQLite database used as Dumptruck’s primary persistence layer for privacy-preserving historical intelligence, derived signals, and related metadata.",
+	"version": "1.0.0",
+	"attributes": {
+		"storage": "sqlite"
+	},
+	"links": [],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:40:40Z"
+		}
+	]
+}

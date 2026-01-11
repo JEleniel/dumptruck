@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "a5e1f8c8-7d58-4f59-8b3d-3a1b6b8d6c2f",
+	"id": "analyze_large_delimited_dump",
+	"card_type": "story",
+	"name": "Analyze a large delimited dump safely",
+	"description": "A User ingests a large CSV/TSV/PSV breach dataset. The system streams records with conservative safety checks (binary rejection, exec-bit checks where applicable, UTF-8 validation) and produces a usable analysis without exhausting memory.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "explains",
+			"target": "2c4a8d90-9b59-4ac0-8f2e-29c2e8f764a1"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:00Z"
+		}
+	]
+}

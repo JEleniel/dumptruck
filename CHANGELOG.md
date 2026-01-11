@@ -87,28 +87,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
     + Configuration schema validation
     + Health check endpoints
     + Graceful shutdown handling
-
-### Known Limitations
-
-- Single-node deployment only (no clustering/sharding)
-- No built-in web UI (API-only)
-- Limited to 4GB+ RAM systems (Ollama embedding requirement)
-
----
-
-## Guidance for Future Releases
-
-### Pre-Release Checklist
-
-- [ ] All tests passing (`cargo test --all`)
-- [ ] Linting clean (`cargo fmt --check && cargo clippy`)
-- [ ] Security audit passes (`cargo audit`)
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated with [Unreleased] content
-- [ ] Version bumped in Cargo.toml
-
-### Release Instructions
-
-See [VERSIONING.md](docs/VERSIONING.md) for detailed release process.
-
-[Unreleased]: https://github.com/jeleniel/dumptruck/compare/v0.1.0...HEAD

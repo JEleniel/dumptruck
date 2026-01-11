@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "0b7b2d5b-9d45-4f3a-9d9c-1c2b3a4d5e6f",
+	"id": "secure_file_deletion",
+	"card_type": "constraint",
+	"name": "Secure File Deletion",
+	"description": "NIST 800-88 clean with 3 passes",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "limits",
+			"target": "2c4a8d90-9b59-4ac0-8f2e-29c2e8f764a1"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:22:00Z"
+		}
+	]
+}

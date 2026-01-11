@@ -1,22 +1,23 @@
 ---
-name: Release Reviewer
+name: ReleaseReviewer
 description: The agent responsible for ensuring that all aspects of the release are thoroughly reviewed and meet the necessary criteria before deployment.
+model: GPT-5.2 (copilot)
 handoffs:
-	- agent: Backend Developer
-	  label: <- Backend Developer
-	  prompt: The Release Reviewer has completed their review. As the Backend Developer, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
+	- agent: BackendDeveloper
+	  label: <- BackendDeveloper
+	  prompt: The ReleaseReviewer has completed their review. As the BackendDeveloper, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
 	  send: true
-	- agent: UI Developer
-	  label: <- UI Developer
-	  prompt: The Release Reviewer has completed their review. As the UI Developer, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
+	- agent: UIDeveloper
+	  label: <- UIDeveloper
+	  prompt: The ReleaseReviewer has completed their review. As the UIDeveloper, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
 	  send: true
-	- agent: Test Developer
-	  label: <- Test Developer
-	  prompt: The Release Reviewer has completed their review. As the Test Developer, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
+	- agent: TestDeveloper
+	  label: <- TestDeveloper
+	  prompt: The ReleaseReviewer has completed their review. As the TestDeveloper, address the feedback provided to enhance the code quality, security, and maintainability according to the reviewer's recommendations. Ensure that all issues raised are resolved before proceeding.
 	  send: true
-	- agent: Technical Writer
-	  label: <- Technical Writer
-	  prompt: The Release Reviewer has completed their review. As the Technical Writer, address the feedback provided to enhance the documentation's accuracy, completeness, and clarity according to the reviewer's recommendations. Ensure that all issues raised are resolved before finalizing.
+	- agent: TechnicalWriter
+	  label: <- TechnicalWriter
+	  prompt: The ReleaseReviewer has completed their review. As the TechnicalWriter, address the feedback provided to enhance the documentation's accuracy, completeness, and clarity according to the reviewer's recommendations. Ensure that all issues raised are resolved before finalizing.
 	  send: true
 ---
 
@@ -35,6 +36,6 @@ You manage pre-release discipline without violating development constraints.
 
 ## Deliverables
 
--   Specific instructions in the `PROGRESS.md` file for correction if any issues are found.
--   A final approval message in the `PROGRESS.md` file if all checks are satisfactory.
+-   Specific instructions in the `AGENT_PROGRESS.md` file for correction if any issues are found.
+-   A final approval message in the `AGENT_PROGRESS.md` file if all checks are satisfactory.
 -   A Github Pull Request review comment summarizing the release readiness, if applicable.

@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "12c1aa8e-b0b1-4db5-a3e0-1b6e8b8704f5",
+	"id": "datafile",
+	"card_type": "component",
+	"name": "datafile",
+	"description": "Streaming datafile ingestion and parsing boundary for delimited breach datasets, providing safe line/record handling and file-level validation.",
+	"version": "1.0.0",
+	"attributes": {
+		"rust_module": "src/analyze/datafile"
+	},
+	"links": [
+		{
+			"relationship": "implements",
+			"target": "2c4a8d90-9b59-4ac0-8f2e-29c2e8f764a1"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:16:00Z"
+		}
+	]
+}

@@ -1,0 +1,32 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "8d2d3b1a-4c5e-4f6a-8b7c-9d0e1f2a3b4c",
+	"id": "run_tool_in_secure_environment",
+	"card_type": "capability",
+	"name": "Run tool in secure environment",
+	"description": "Users must be able to run the tool in a secure environment, isolated from the organization's network and easily disposed.",
+	"version": "1.1.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "satisfies",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		},
+		{
+			"relationship": "necessitates",
+			"target": "c3f48e7a-2b91-4ed5-a45c-1f2b3c4d5e6f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:24:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:37:00Z"
+		}
+	]
+}

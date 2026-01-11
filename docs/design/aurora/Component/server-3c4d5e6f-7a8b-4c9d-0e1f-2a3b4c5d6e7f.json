@@ -1,0 +1,30 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f",
+	"id": "server",
+	"card_type": "component",
+	"name": "server",
+	"description": "HTTPS server runtime: startup, lifecycle, and wiring for authenticated API operation.",
+	"version": "1.1.0",
+	"attributes": {
+		"rust_module": "src/server"
+	},
+	"links": [
+		{
+			"relationship": "implements",
+			"target": "7b6b8d4b-1c6f-4c0e-9c08-5c6a1f5a8b2f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:08:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:14:20Z"
+		}
+	]
+}

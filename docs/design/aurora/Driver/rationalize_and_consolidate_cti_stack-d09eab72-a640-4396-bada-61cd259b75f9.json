@@ -1,0 +1,28 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "d09eab72-a640-4396-bada-61cd259b75f9",
+	"id": "rationalize_and_consolidate_cti_stack",
+	"card_type": "driver",
+	"name": "Rationalize and consolidate the CTI stack",
+	"description": "Rationalize and consolidate the Cyber Threat Intelligence stack to reduce complexity, improve automation and interoperability, and lower total cost of ownership while maintaining or enhancing analytical capabilities.",
+	"version": "1.1.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "drives",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:23:50Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:35:32Z"
+		}
+	]
+}

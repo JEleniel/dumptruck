@@ -1,6 +1,0 @@
-email,username,password,source,date_leaked
-alice@example.com,alice,correcthorsebatterystaple,website_breach,2020-01-15
-bob@example.org,bob,8843d7f92416211de9ebb963ff4ce28125932878,forum_hack,2020-03-22
-charlie@test.com,charlie,letmein,database_dump,2020-06-10
-diana@company.io,diana,5f4dcc3b5aa765d61d8327deb882cf99,malware_logs,2021-02-14
-eve@domain.co.uk,eve,sunshine,social_engineering,2021-05-20

@@ -1,0 +1,28 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "fcc2b3a2-71c6-4338-aae5-cd59aefcdc67",
+	"id": "enhance_ioc_ingestion_and_curation",
+	"card_type": "driver",
+	"name": "Enhance IOC ingestion and curation",
+	"description": "Enhance the speed, accuracy, and relevance of Indicator of Compromise (IOC) ingestion and curation by streamlining workflows, implementing a review and validation process, and prioritizing high-value intelligence sources.",
+	"version": "1.1.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "drives",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:23:50Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:35:32Z"
+		}
+	]
+}

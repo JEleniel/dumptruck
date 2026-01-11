@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+	"id": "share_intelligence_between_instances",
+	"card_type": "story",
+	"name": "Share intelligence between instances",
+	"description": "A User exports learned intelligence from one environment and imports it into another. The system supports export and import with merge so known tagged data can be recognized consistently across instances.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "explains",
+			"target": "3f0b6c1a-0c5a-4a1e-8a5d-4d7f0f8c2b4a"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:00Z"
+		}
+	]
+}

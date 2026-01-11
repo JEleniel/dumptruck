@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "2c4a8d90-9b59-4ac0-8f2e-29c2e8f764a1",
+	"id": "safe_streaming_ingestion",
+	"card_type": "feature",
+	"name": "Safe streaming ingestion",
+	"description": "Ingest large delimited datasets (CSV/TSV/PSV) via memory-efficient streaming with conservative safety checks (binary rejection, executable bit checks on Posix, UTF-8 validation) and resilient handling of malformed input.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "satisfies",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:58:00Z"
+		}
+	]
+}

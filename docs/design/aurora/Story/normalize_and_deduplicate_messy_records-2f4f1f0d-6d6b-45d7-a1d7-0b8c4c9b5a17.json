@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "2f4f1f0d-6d6b-45d7-a1d7-0b8c4c9b5a17",
+	"id": "normalize_and_deduplicate_messy_records",
+	"card_type": "story",
+	"name": "Normalize and deduplicate messy records",
+	"description": "A User processes breach data containing Unicode variants, email aliasing, and inconsistent punctuation. The system normalizes fields (Unicode canonicalization, case-folding, punctuation rules, smart email handling) so records can be compared, deduplicated, and reused for future correlation.",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "explains",
+			"target": "6e6e5d5a-2f0b-4b2a-9e9a-0c2c4fb1d46b"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:04:00Z"
+		}
+	]
+}

@@ -1,0 +1,74 @@
+{
+	"$schema": "./Aurora.schema.json",
+	"uuid": "5477c32b-28fb-4a18-b359-89437520fe02",
+	"id": "dumptruck_mission",
+	"card_type": "mission",
+	"name": "Dumptruck Mission",
+	"description": "Enable secure, privacy-preserving analysis of bulk data dumps (e.g., breach/leak datasets), producing actionable reports and reusable intelligence (deduplication, enrichment, history) while supporting both standalone CLI and HTTPS server operation.",
+	"version": "1.4.0",
+	"attributes": {
+		"repository": "https://github.com/JEleniel/dumptruck",
+		"license": "MIT-or-Apache-2.0"
+	},
+	"links": [
+		{
+			"relationship": "involves",
+			"target": "2f4c0a60-1a18-4e21-9d16-1d1e396f3d4a"
+		},
+		{
+			"relationship": "necessitates",
+			"target": "8d2d3b1a-4c5e-4f6a-8b7c-9d0e1f2a3b4c"
+		},
+		{
+			"relationship": "establishes",
+			"target": "df3e1636-d23c-4517-9464-8f04c7638c1a"
+		},
+		{
+			"relationship": "establishes",
+			"target": "fcc2b3a2-71c6-4338-aae5-cd59aefcdc67"
+		},
+		{
+			"relationship": "establishes",
+			"target": "da524b38-aee3-4aa1-8c99-48931e47f59b"
+		},
+		{
+			"relationship": "establishes",
+			"target": "d09eab72-a640-4396-bada-61cd259b75f9"
+		},
+		{
+			"relationship": "establishes",
+			"target": "a11962af-32b2-4b09-a936-441d1364452f"
+		},
+		{
+			"relationship": "necessitates",
+			"target": "5c1f4f1d-5cfe-4e46-b117-7102662e40f0"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T18:12:28Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:23:50Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:50:30Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:02:30Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:24:30Z"
+		}
+	]
+}

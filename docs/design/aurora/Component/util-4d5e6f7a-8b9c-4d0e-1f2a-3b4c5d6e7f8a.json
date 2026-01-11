@@ -1,0 +1,26 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+	"id": "util",
+	"card_type": "component",
+	"name": "util",
+	"description": "Core utilities supporting safety, normalization helpers, hashing, file handling, and other shared primitives used across the application.",
+	"version": "1.1.0",
+	"attributes": {
+		"rust_module": "src/util",
+		"support": true
+	},
+	"links": [],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:08:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:20:20Z"
+		}
+	]
+}

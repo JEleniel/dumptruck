@@ -1,0 +1,25 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "0e6b2c44-6b2c-4b1b-9e34-9e52a5c3f6a4",
+	"id": "privacy_first_persistence",
+	"card_type": "feature",
+	"name": "Privacy-first persistence",
+	"description": "Persist learned intelligence in a privacy-preserving form by storing historical records only as non-reversible hashes (HMAC) and supporting secure deletion of working files (with explicit limits based on filesystem and media behavior).",
+	"version": "1.0.0",
+	"attributes": {
+		"source": "README.md"
+	},
+	"links": [
+		{
+			"relationship": "satisfies",
+			"target": "aaf48cba-55e2-4d9d-89f8-787461af1416"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-10T23:58:00Z"
+		}
+	]
+}

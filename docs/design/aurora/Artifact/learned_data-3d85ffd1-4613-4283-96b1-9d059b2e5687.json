@@ -1,0 +1,23 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "3d85ffd1-4613-4283-96b1-9d059b2e5687",
+	"id": "learned_data",
+	"card_type": "artifact",
+	"name": "Learned Data",
+	"description": "Derived intelligence produced during analysis (e.g., normalized fingerprints, entity mappings, enrichment cache, deduplication artifacts, and other reusable signals) intended for privacy-preserving persistence.",
+	"version": "1.0.0",
+	"attributes": {},
+	"links": [
+		{
+			"relationship": "persists_to",
+			"target": "05b01a6d-22f1-4fc0-af27-be5cde0be72f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:40:20Z"
+		}
+	]
+}

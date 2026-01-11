@@ -1,0 +1,30 @@
+{
+	"$schema": "../Aurora.schema.json",
+	"uuid": "5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b",
+	"id": "api",
+	"card_type": "component",
+	"name": "api",
+	"description": "HTTP API surface: routing, handlers, request/response types, and endpoint behavior for ingest/status and related operations.",
+	"version": "1.1.0",
+	"attributes": {
+		"rust_module": "src/api"
+	},
+	"links": [
+		{
+			"relationship": "implements",
+			"target": "7b6b8d4b-1c6f-4c0e-9c08-5c6a1f5a8b2f"
+		}
+	],
+	"audit_history": [
+		{
+			"event": "created",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:08:00Z"
+		},
+		{
+			"event": "edited",
+			"user": "agent:architect",
+			"timestamp": "2026-01-11T00:14:30Z"
+		}
+	]
+}
