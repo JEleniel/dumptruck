@@ -1,6 +1,5 @@
 //! Helper normalization and hashing utilities used by the NPI/PII detection module.
 mod alias_resolution;
-mod evidence;
 
 use crate::{HashError, configuration::EmailSuffixSubstitutionConfiguration};
 use thiserror::Error;

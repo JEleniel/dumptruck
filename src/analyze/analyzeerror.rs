@@ -6,4 +6,6 @@ pub enum AnalyzeError {
 	InvalidBreachDate(String),
 	#[error("I/O error: {0}")]
 	IoError(#[from] std::io::Error),
+	#[error("Regex error: {0}")]
+	RegexError(#[from] regex::Error),
 }

@@ -7,6 +7,7 @@ use crate::{
 	analyze::AnalyzeArgs,
 	configuration::APIKey,
 	database::{exportargs::ExportArgs, importargs::ImportArgs},
+	rainbowtable::RainbowTableArgs,
 	server::ServerArgs,
 	status::StatusArgs,
 };
@@ -78,13 +79,15 @@ pub struct Cli {
 pub enum Commands {
 	/// Ingest and analyze data files
 	Analyze(AnalyzeArgs),
-	/// Show system information for a running server instance
-	Status(StatusArgs),
 	/// Export the database to a "seed" database file
 	Export(ExportArgs),
 	/// Merge a database file into the main database
 	/// This is primarily used to import "seed" database files
 	Import(ImportArgs),
+	/// Import text and generate rainbow tables
+	Rainbow(RainbowTableArgs),
 	/// Start in HTTP/2 server mode with TLS 1.3+ and OAuth authentication
 	Serve(ServerArgs),
+	/// Show system information for a running server instance
+	Status(StatusArgs),
 }

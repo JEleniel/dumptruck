@@ -112,8 +112,6 @@ Real-world breach data is messy. Email variants, Unicode aliases, malformed reco
 
 ---
 
----
-
 ## Safety & Security
 
 **Code Quality:**
